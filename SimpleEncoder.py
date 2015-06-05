@@ -2,53 +2,62 @@ __author__ = 'Marko Milutinovic'
 
 """
 This class is meant for testing. It implements a simple encoder that will simply store the passed in
-data into array of integers. The base symbols are between 0-255 and they represent the actual data that is
-being encoded. The base symbols can be extended when instantiating the object.
+data into array of integers. The symbols run from 0 to the vocabulary size - 1
 """
 
 from array import *
 
 class SimpleEncoder:
-    DEFAULT_VOCABULARY_SIZE = 256
-
-    def __init__(self, numExtendedSymols_):
+    def __init__(self, vocabularySize_):
         """
-        Initialize the symbol count based on default and extended character set. Initialize the integer array where
+        Initialize the vocabulary size based on incoming parameter and initialize the integer array where
         data will be stored
 
-        :param numExtendedSymols_: the number of additional symbols that will be added to vocabulary size
+        :param vocabularySize_: the vocabulary size used by this encoder
         :return:
         """
 
-        self.mVocabularySize = self.DEFAULT_VOCABULARY_SIZE + numExtendedSymols_
+        self.mVocabularySize = vocabularySize_
         self.mEncodedData = array('i')
-        self.mSymbolCount = 0
 
-    def encode(self, symbol_):
+    def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_):
         """
-        Encode the symbol passed in. Just store the the symbol into the integer array
+        Encode the data passed in. Just store the the symbols into the test integer array
 
-        :param symbol_: Symbol to be encoded
-        :return: None
-        """
+        :param dataToEncode_: The data that needs to be compressed (integer array)
+        :param dataLen_: The length of data that needs to be compressed
+        :param encodedData_: Unused
+        :param maxEncodedDataLen_ : Unused
 
-        if(symbol_ >= self.mVocabularySize):
-            raise Exception("Symbol out of bounds")
-
-        self.mEncodedData.append(symbol_)
-        self.mSymbolCount += 1
-
-    def getEncodedData(self, outData_, maxOutDataLen_):
-        """
-        This function will not actually return any data as we are not encoding data. Just return 0 for the length of
-        encoded data
-
-        :param outData_: byte array where encoded data will be copied
-        :param maxOutDataLen_: the max number of bytes that can be stored in outData_
-        :return: the number of bytes that are stored in outData_
+        :return: The number of items stored in mEncodedData
         """
 
-        return self.mSymbolCount
+        # If the byte array is smaller than data length pass in throw exception
+        if(len(dataToEncode_) < dataLen_):
+            raise Exception("Data byte array passed in smaller than expected")
+
+        # If the byte array is smaller than data length pass in throw exception
+        if(len(encodedData_) < maxEncodedDataLen_):
+            raise Exception("Compressed data byte array passed in smaller than expected")
+
+        for i in range(0, dataLen_):
+            symbol = dataToEncode_[i]
+
+            if(symbol >= self.mVocabularySize):
+                raise Exception("Symbol out of bounds")
+
+            self.mEncodedData.append(symbol)
+
+        return dataLen_
+
+    def reset(self):
+        """
+        This function does nothing
+
+        :return:
+        """
+
+        pass
 
 
 
