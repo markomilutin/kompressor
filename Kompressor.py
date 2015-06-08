@@ -162,8 +162,8 @@ class Kompressor:
                         runCount -= maxRunLength_
                         outDataIndex += 1
 
-                    # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of 1 after the original symbol
-                    if(runCount >= 2):
+                    # If the run is greater that or equal to 1, insert the replacement symbol. The first symbol indicates a run of 1 after the original symbol
+                    if(runCount >= 1):
                         dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 1)
                         outDataIndex += 1
 

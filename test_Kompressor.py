@@ -292,19 +292,144 @@ class KompressorTests(unittest.TestCase):
 
         self.assertEqual(0, newLength)
 
-    def test_replaceRunsGeneric_one_symbol(self):
+    def test_replaceRunsGeneric_two_symbols_no_runs(self):
         """
-        Purpose: Pass in array with one symbol
-        Expectation: The symbol should be returned
+        Purpose: Pass in array with two symbols and no runs
+        Expectation: The original data sequence should be returned
         """
 
         kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
 
-        data = array('i', [])
+        data = array('i', [1, 2])
 
-        newLength = kompressor._replaceRunsGeneric(259, 6, data, 0)
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 2)
 
-        self.assertEqual(0, newLength)
+        self.assertEqual(2, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(2, data[1])
+
+    def test_replaceRunsGeneric_symbols_no_runs(self):
+        """
+        Purpose: Pass in array with a longer sequence of symbols that has no runs
+        Expectation: The original data sequence should be returned
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 17)
+
+        self.assertEqual(17, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(2, data[1])
+        self.assertEqual(3, data[2])
+        self.assertEqual(4, data[3])
+        self.assertEqual(5, data[4])
+        self.assertEqual(6, data[5])
+        self.assertEqual(7, data[6])
+        self.assertEqual(8, data[7])
+        self.assertEqual(9, data[8])
+        self.assertEqual(10, data[9])
+        self.assertEqual(11, data[10])
+        self.assertEqual(12, data[11])
+        self.assertEqual(13, data[12])
+        self.assertEqual(14, data[13])
+        self.assertEqual(15, data[14])
+        self.assertEqual(16, data[15])
+        self.assertEqual(17, data[16])
+
+    def test_replaceRunsGeneric_run_of_2(self):
+        """
+        Purpose: Pass in array that has a run of two symbols
+        Expectation: The run should be replaced by first symbol in run and the extended replacement symbol
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 2, 2, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 4)
+
+        self.assertEqual(4, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(2, data[1])
+        self.assertEqual(259, data[2])
+        self.assertEqual(3, data[3])
+
+    def test_replaceRunsGeneric_run_of_3(self):
+        """
+        Purpose: Pass in array that has a run of three symbols
+        Expectation: The run should be replaced by first symbol in run and the extended replacement symbol
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 44, 44, 44, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 5)
+
+        self.assertEqual(4, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(44, data[1])
+        self.assertEqual(260, data[2])
+        self.assertEqual(3, data[3])
+
+    def test_replaceRunsGeneric_run_of_4(self):
+        """
+        Purpose: Pass in array that has a run of four symbols
+        Expectation: The run should be replaced by first symbol in run and the extended replacement symbol
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 255, 255, 255, 255, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 6)
+
+        self.assertEqual(4, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(255, data[1])
+        self.assertEqual(261, data[2])
+        self.assertEqual(3, data[3])
+
+    def test_replaceRunsGeneric_run_of_max(self):
+        """
+        Purpose: Pass in array that has a run of max allowed
+        Expectation: The run should be replaced by first symbol in run and the max replacement symbol
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 255, 255, 255, 255, 255, 255, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 8)
+
+        self.assertEqual(4, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(255, data[1])
+        self.assertEqual(263, data[2])
+        self.assertEqual(3, data[3])
+
+    def test_replaceRunsGeneric_run_of_max_plus_1(self):
+        """
+        Purpose: Pass in array that has a run of max allowed plus one
+        Expectation: The run should be replaced by first symbol in run and the max replacement symbol and then the original run symbol again
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 255, 255, 255, 255, 255, 255, 255, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 9)
+
+        self.assertEqual(5, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(255, data[1])
+        self.assertEqual(263, data[2])
+        self.assertEqual(255, data[3])
+        self.assertEqual(3, data[4])
 
 if __name__ == '__main__':
     unittest.main()
+
