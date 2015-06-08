@@ -27,6 +27,34 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(0, kompressor.mContinuousModeTotalData)
         self.assertEqual(0, kompressor.mContinuousModeDataCompressed)
 
+    def test_replaceRunsSpecific_no_symbols(self):
+        """
+        Purpose: Pass in data that has no data
+        Expectation: 0 should be returned
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [])
+
+        newLength = kompressor._replaceRunsSpecific(55, 257, 10, data, 0)
+
+        self.assertEqual(0, newLength)
+
+    def test_replaceRunsSpecific_one_symbol_special(self):
+        """
+        Purpose: Pass in data that has no data
+        Expectation: 0 should be returned
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [])
+
+        newLength = kompressor._replaceRunsSpecific(55, 257, 10, data, 0)
+
+        self.assertEqual(0, newLength)
+
     def test_replaceRunsSpecific_no_runs_nosymbol(self):
         """
         Purpose: Pass in data that has no runs of the specified symbol but has runs of other symbols. The symbol we are replacing is not in the data either
@@ -249,6 +277,34 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(263, data[3])
         self.assertEqual(259, data[4])
         self.assertEqual(9, data[5])
+
+    def test_replaceRunsGeneric_no_data(self):
+        """
+        Purpose: Pass in array with no data
+        Expectation: 0 should be returned
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 0)
+
+        self.assertEqual(0, newLength)
+
+    def test_replaceRunsGeneric_one_symbol(self):
+        """
+        Purpose: Pass in array with one symbol
+        Expectation: The symbol should be returned
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 0)
+
+        self.assertEqual(0, newLength)
 
 if __name__ == '__main__':
     unittest.main()

@@ -27,6 +27,7 @@ import utils
 class Kompressor:
     BASE_BINARY_VOCABULARY_SIZE = 257 # 0-255 for 8-bit characters plus termination symbol
     TERMINATION_SYMBOL = 256 # Used to indicate end of compression sequence
+    INVALID_SYMBOL = 0xFFFF
 
     def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_):
         """
@@ -133,7 +134,13 @@ class Kompressor:
 
         runCount = 0
         outDataIndex = 0
-        currentSymbol = 0xFFFF
+
+        # Start with invalid symbol
+        currentSymbol = self.INVALID_SYMBOL
+
+        # If no data just return 0
+        if(dataSize_ == 0):
+            return 0
 
         # Go through all the data
         for i in range(0, dataSize_):
@@ -143,7 +150,7 @@ class Kompressor:
                 runCount += 1
             else:
                 #If this is not the first symbol encountered process any possible runs
-                if(currentSymbol != 0xFFFF):
+                if(currentSymbol != self.INVALID_SYMBOL):
 
                     # Insert the previous symbol
                     dataSection_[outDataIndex] = currentSymbol
@@ -163,22 +170,23 @@ class Kompressor:
                 runCount = 0
                 currentSymbol = dataSection_[i]
 
-        # If there is a run collected at the end, replace with appropriate symbol(s).
+
+        # Handle the last outstanding symbol
+        dataSection_[outDataIndex] = currentSymbol
+        outDataIndex += 1
+
+        # If the run is greater than the max put in max run symbol
         while(runCount > maxRunLength_):
-            dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 2
+            dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 1
             runCount -= maxRunLength_
             outDataIndex += 1
 
-        # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of two. If it is a run of 1 then put the symbol back in
+        # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of 1 after the original symbol
         if(runCount >= 2):
-            dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 2)
-            outDataIndex += 1
-        elif(runCount == 1):
-            dataSection_[outDataIndex] = symbolToReplace_
+            dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 1)
             outDataIndex += 1
 
         return outDataIndex
-
 
     def _performBWTransform(self, dataSection_, dataSize):
         pass
