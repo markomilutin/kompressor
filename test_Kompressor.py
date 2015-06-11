@@ -258,6 +258,28 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(263, data[4])
         self.assertEqual(9, data[5])
 
+    def test_replaceRunsSpecific_run_past_max_by_2_max_plus_1(self):
+        """
+        Purpose: Pass in data that has a run that exceeds the max by 2*max
+        Expectation: Two symbols should be used to replace the run
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9])
+
+        newLength = kompressor._replaceRunsSpecific(0, 259, 6, data, 25)
+
+        self.assertEqual(8, newLength)
+        self.assertEqual(260, data[0])
+        self.assertEqual(1, data[1])
+        self.assertEqual(2, data[2])
+        self.assertEqual(263, data[3])
+        self.assertEqual(263, data[4])
+        self.assertEqual(263, data[5])
+        self.assertEqual(0, data[6])
+        self.assertEqual(9, data[7])
+
     def test_replaceRunsSpecific_run_past_max_by_two(self):
         """
         Purpose: Pass in data that has a run that exceeds the max by 2
@@ -396,7 +418,7 @@ class KompressorTests(unittest.TestCase):
     def test_replaceRunsGeneric_run_of_max(self):
         """
         Purpose: Pass in array that has a run of max allowed
-        Expectation: The run should be replaced by first symbol in run and the max replacement symbol
+        Expectation: The run should be replaced by first symbol in run and the replacement symbol
         """
 
         kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
@@ -411,10 +433,29 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(263, data[2])
         self.assertEqual(3, data[3])
 
+    def test_replaceRunsGeneric_run_of_max_minus_1(self):
+        """
+        Purpose: Pass in array that has a run of max allowed minus one
+        Expectation: The run should be replaced by first symbol in run and the extended symbol representing 5 additional duplicates
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 255, 255, 255, 255, 255, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 7)
+
+        self.assertEqual(4, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(255, data[1])
+        self.assertEqual(262, data[2])
+        self.assertEqual(3, data[3])
+
     def test_replaceRunsGeneric_run_of_max_plus_1(self):
         """
         Purpose: Pass in array that has a run of max allowed plus one
-        Expectation: The run should be replaced by first symbol in run and the max replacement symbol and then the original run symbol again
+        Expectation: The run should be replaced by first symbol in run and the extended symbol representing max duplicates
+                     and then extended symbol indicating 1 more duplicate
         """
 
         kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
@@ -427,8 +468,29 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(1, data[0])
         self.assertEqual(255, data[1])
         self.assertEqual(263, data[2])
-        self.assertEqual(255, data[3])
+        self.assertEqual(259, data[3])
         self.assertEqual(3, data[4])
+
+    def test_replaceRunsGeneric_run_of_max_plus_2_max_plus_1(self):
+        """
+        Purpose: Pass in array that has a run of 3 max allowed plus one
+        Expectation: The runs should be replaced with correct extended symbols
+        """
+
+        kompressor = Kompressor(256, 0x00, 0, 0x00, 0, 10)
+
+        data = array('i', [1, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3])
+
+        newLength = kompressor._replaceRunsGeneric(259, 6, data, 21)
+
+        self.assertEqual(7, newLength)
+        self.assertEqual(1, data[0])
+        self.assertEqual(255, data[1])
+        self.assertEqual(263, data[2])
+        self.assertEqual(263, data[3])
+        self.assertEqual(263, data[4])
+        self.assertEqual(262, data[5])
+        self.assertEqual(3, data[6])
 
 if __name__ == '__main__':
     unittest.main()

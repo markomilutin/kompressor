@@ -131,8 +131,8 @@ class Kompressor:
         :param dataSize_: The size of the array
         :return: The new size of the dataSection_ array after replacement is finished
         """
-
-        runCount = 0
+        maxDuplicateCount = maxRunLength_ - 1
+        duplicateCount = 0
         outDataIndex = 0
 
         # Start with invalid symbol
@@ -144,10 +144,9 @@ class Kompressor:
 
         # Go through all the data
         for i in range(0, dataSize_):
-
-            # If the next symbol encountered is a repeat count increment the run count, otherwise process change
+            # If the next symbol encountered is a repeat increment the duplicate count, otherwise process change
             if(currentSymbol == dataSection_[i]):
-                runCount += 1
+                duplicateCount += 1
             else:
                 #If this is not the first symbol encountered process any possible runs
                 if(currentSymbol != self.INVALID_SYMBOL):
@@ -156,34 +155,33 @@ class Kompressor:
                     dataSection_[outDataIndex] = currentSymbol
                     outDataIndex += 1
 
-                    # If the run is greater than the max put in max run symbol
-                    while(runCount > maxRunLength_):
-                        dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 1
-                        runCount -= maxRunLength_
+                    # If the run is greater than the max put in max run symbol.
+                    while(duplicateCount > maxDuplicateCount):
+                        dataSection_[outDataIndex] = runLengthSymbolStart_ + maxDuplicateCount - 1
+                        duplicateCount -= maxDuplicateCount
                         outDataIndex += 1
 
-                    # If the run is greater that or equal to 1, insert the replacement symbol. The first symbol indicates a run of 1 after the original symbol
-                    if(runCount >= 1):
-                        dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 1)
+                    # If the run is greater that or equal to 1, insert the replacement symbol. Run count does not include original symbol
+                    if(duplicateCount >= 1):
+                        dataSection_[outDataIndex] = (runLengthSymbolStart_ + duplicateCount - 1)
                         outDataIndex += 1
 
-                runCount = 0
+                duplicateCount = 0
                 currentSymbol = dataSection_[i]
-
 
         # Handle the last outstanding symbol
         dataSection_[outDataIndex] = currentSymbol
         outDataIndex += 1
 
-        # If the run is greater than the max put in max run symbol
-        while(runCount > maxRunLength_):
-            dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 1
-            runCount -= maxRunLength_
+        # If the run is greater than the max put in max run symbol. Run count includes original symbol
+        while(duplicateCount > maxDuplicateCount):
+            dataSection_[outDataIndex] = runLengthSymbolStart_ + maxDuplicateCount - 1
+            duplicateCount -= maxRunLength_
             outDataIndex += 1
 
-        # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of 1 after the original symbol
-        if(runCount >= 2):
-            dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 1)
+        # If the run is greater that or equal to 1, insert the replacement symbol
+        if(duplicateCount >= 1):
+            dataSection_[outDataIndex] = (runLengthSymbolStart_ + duplicateCount - 1)
             outDataIndex += 1
 
         return outDataIndex

@@ -24,7 +24,8 @@ def calculateMaxBytes(wordSize_):
     Calculate the max number of bytes we can compress before we are required
     to normalize the statistics during AR encoding
 
-    :param wordSize_: The number of bits used when generating tags. Must be greater than 2 and less than or equal to 32 to produce a valid result
+    :param wordSize_: The number of bits used when generating
+    tags. Must be greater than 2 and less than or equal to 32 to produce a valid result
     :return: Return the max bytes before we need to normalize the statistics
     """
 
