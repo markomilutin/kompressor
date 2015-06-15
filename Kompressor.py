@@ -47,6 +47,7 @@ class Kompressor:
             raise Exception('Section size must be greater than 0')
 
         self.mSectionSize = sectionSize_
+        self.mSectionTransformData = array('i', [0]*sectionSize_)
         self.mSpecialSymbol1 = specialSymbol1_
         self.mSpecialSymbol1MaxRun = specialSymbol1MaxRun_
         self.mSpecialSymbol2 = specialSymbol2_
@@ -139,8 +140,8 @@ class Kompressor:
         currentSymbol = self.INVALID_SYMBOL
 
         # If no data just return 0
-        if(dataSize_ == 0):
-            return 0
+        if((dataSize_ == 0) or (maxRunLength_ <= 1)):
+            return dataSize_
 
         # Go through all the data
         for i in range(0, dataSize_):
@@ -186,11 +187,120 @@ class Kompressor:
 
         return outDataIndex
 
-    def _performBWTransform(self, dataSection_, dataSize):
-        pass
+    def _bytearrayLessThan(self, originalData_, leftPermutationIndex_, rightPermutationIndex_, len_):
+        """
+        Determine which byte array is less based on data sorted in lexigraphical order. Use the permutation indeces and the original
+        data to construct byte arrays that are being compared. If left is smaller return -1, if right is smaller return 1
+        and if they are the same return 0
+
+        :param originalData_: The original byte array
+        :param leftData_: Permutation index of left side. This is a permutation index which will be used to construct the byte array from the original data
+        :param rightData_: Permutation index of right side. This is a permutation index which will be used to construct the byte array from the original data
+        :param len_: Length of left and right byte arrays (NOTE: they must be the same length)
+
+        :return: -1 ir leftData < rightdata, 1 if rightData < leftData, 0 if rightData == leftData
+        """
+        for i in range(0, len_):
+            leftData = originalData_[(i+leftPermutationIndex_)%len_]
+            rightData = originalData_[(i+rightPermutationIndex_)%len_]
+            if(leftData < rightData):
+                return -1
+            elif(leftData > rightData):
+                return 1
+
+        return 0
+
+    def _performBWTransform(self, dataSection_, dataSize_, transformedData_, transformedDataLen_):
+        """ Perform BW transform on dataSection_. This transform will maximize the chances of equal bytes being grouped
+            together. The result will be stored in transformedData_
+
+        :param dataSection_: The data to be transformed which is an array
+        :param dataSize_: The length of the data to be transformed
+        :param transformedData_: The transformed data will be stored here. There must be at least inLen_ + 1 bytes available. This is an array
+        :param transformedDataLen_: The length of outputData_. Must be at least inLen_ + 1 bytes
+        :return: The size of the transformed data
+        """
+
+        if(transformedDataLen_ < (dataSize_ + 1)):
+            raise Exception("Output data array to small")
+
+        # The full array is the first boundary
+        stack = [(0, dataSize_)]
+
+        # Start with permutations of original data ordered 0 to dataSize_. This will be sorted according the contents of the permutations
+        indecesOfDataPermutations = bytearray(dataSize_)
+
+        # Set the indeces based on permutation
+        for i in range(0, dataSize_):
+            indecesOfDataPermutations[i] = i
+
+        # Perform QuickSort of indices based on the contents of data permutations
+        while len(stack) > 0:
+            bounds = stack.pop()
+            pivotIndex = int((bounds[0] + bounds[1])/2)
+
+            pivot = indecesOfDataPermutations[pivotIndex]
+
+            # Move the pivot to the top of the range
+            temp = indecesOfDataPermutations[bounds[1]-1]
+            indecesOfDataPermutations[bounds[1]-1] = pivot
+            indecesOfDataPermutations[pivotIndex] = temp
+
+            storeIndex = bounds[0]
+
+            #Compare remaining indeces against pivot value
+            for i in range(bounds[0], bounds[1]):
+                #If permutation is less than pivot swap place with the current value at the store index
+                if(self._bytearrayLessThan(dataSection_, indecesOfDataPermutations[i], pivot, dataSize_) == -1):
+                    temp = indecesOfDataPermutations[storeIndex]
+                    indecesOfDataPermutations[storeIndex] = indecesOfDataPermutations[i]
+                    indecesOfDataPermutations[i] = temp
+                    storeIndex += 1
+
+            #Place pivot at it's correct location
+            temp = indecesOfDataPermutations[storeIndex]
+            indecesOfDataPermutations[storeIndex] = indecesOfDataPermutations[bounds[1] - 1]
+            indecesOfDataPermutations[bounds[1] - 1] = temp
+
+            #If we can keep sub dividing, do so
+            if(bounds[0] < storeIndex):
+                stack.append((bounds[0], storeIndex))
+
+            if(storeIndex < (bounds[1]-1)):
+                stack.append((storeIndex + 1, bounds[1]))
+
+        #Find the original data sequence in the sorted indecesOfDataPermutations
+        originalSequenceIndex = indecesOfDataPermutations.find(0)
+
+        transformedData_[0] = originalSequenceIndex
+
+        for i in range(1, dataSize_+1):
+            transformedData_[i] = dataSection_[(dataSize_ - 1 + indecesOfDataPermutations[i-1])%dataSize_]
+
+        return (dataSize_ + 1)
 
     def kompress(self, inputData_, inputDataLen_, outputData_, maxOutputLen_):
-        pass
+        """
+        Pass in integer array of data that needs to be compressed. The compressed data will
+        be stored in the outputData_ bytearray.
+
+        :param inputData_: Array that holds the data that needs to be compressed
+        :param inputDataLen_: The data size must be less than or equal to self.mSectionSize
+        :param outputData_: Byte array that will hold the compressed binary data
+        :param maxOutputLen_: The maximum size of the outputData_ array. If this is not enough to store compressed data an exception will be thrown
+        :return: Return the size of the compressed data in outputData_
+        """
+
+        # If data exceeds section size throw exception
+        if(inputDataLen_ > self.mSectionSize):
+            raise Exception('Data lenghts exceeds max section size')
+
+        # Perform first character replacement if possible
+        if(self.mSpecialSymbol1MaxRun > 1):
+            inputDataLen_ = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
+
+        transformedDataLen = self._performBWTransform()
+
 
     def kompressStartContinuous(self, totalDataToCompress_):
         """
