@@ -15,15 +15,19 @@ class KompressorTests(unittest.TestCase):
         kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
 
         self.assertEqual(256, kompressor.mSectionSize)
-        self.assertNotEqual(None, kompressor.mSectionTransformData)
-        self.assertEqual(256, len(kompressor.mSectionTransformData))
         self.assertEqual(0, kompressor.mSpecialSymbol1)
         self.assertEqual(3, kompressor.mSpecialSymbol1MaxRun)
+        self.assertEqual(257, kompressor.mSpecialSymbol1RunLengthStart)
         self.assertEqual(0xFF, kompressor.mSpecialSymbol2)
         self.assertEqual(4, kompressor.mSpecialSymbol2MaxRun)
+        self.assertEqual(260, kompressor.mSpecialSymbol2RunLengthStart)
         self.assertEqual(10, kompressor.mGenericMaxRun)
+        self.assertEqual(264, kompressor.mGenericRunLengthStart)
         self.assertEqual(257+3+4+10, kompressor.mVocabularySize)
-        self.assertEqual(1, kompressor.mBWTransforStoreBytes)
+        self.assertEqual(1, kompressor.mBWTransformStoreBytes)
+        self.assertNotEqual(None, kompressor.mSectionTransformData)
+        self.assertEqual(257, len(kompressor.mSectionTransformData))
+        self.assertEqual(257, kompressor.mSectionTransformDataMaxSize)
         self.assertNotEqual(None, kompressor.mEncoder)
         self.assertEqual(False, kompressor.mContinuousModeEnabled)
         self.assertEqual(0, kompressor.mContinuousModeTotalData)
@@ -645,6 +649,47 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(99, transformedData[10])
         self.assertEqual(0, transformedData[11])
 
+    def test_performBWTransform_with_sectionsize_over256(self):
+        # Purpose: Run transform on small data set
+        # Expectation: The resulting data should be transformed correctly and the correct number of bytes should be prepended for transform
+
+        data = array('i')
+
+        #Create bytearray of len 11
+        data.append(0)
+        data.append(33)
+        data.append(4)
+        data.append(99)
+        data.append(111)
+        data.append(22)
+        data.append(0)
+        data.append(145)
+        data.append(32)
+        data.append(4)
+        data.append(1)
+
+        test_kompressor = Kompressor(1024, 0x00, 0, 0x00, 0, 10)
+
+
+        transformedData = array('i', [0xFF]*13)
+
+        outputLen = test_kompressor._performBWTransform(data, 11, transformedData, 13)
+
+        self.assertEqual(13, outputLen)
+        self.assertEqual(0, transformedData[0])
+        self.assertEqual(0, transformedData[1])
+        self.assertEqual(1, transformedData[2])
+        self.assertEqual(22, transformedData[3])
+        self.assertEqual(4, transformedData[4])
+        self.assertEqual(32, transformedData[5])
+        self.assertEqual(33, transformedData[6])
+        self.assertEqual(111, transformedData[7])
+        self.assertEqual(145, transformedData[8])
+        self.assertEqual(0, transformedData[9])
+        self.assertEqual(4, transformedData[10])
+        self.assertEqual(99, transformedData[11])
+        self.assertEqual(0, transformedData[12])
+
     def test_performBWTransform_2(self):
         # Purpose: Run transform on small data set
         # Expectation: The resulting data should be transformed correctly
@@ -702,6 +747,64 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(99, transformedData[18])
         self.assertEqual(0, transformedData[19])
         self.assertEqual(4, transformedData[20])
+
+    def test_performBWTransform_2_sectionsize_over_256(self):
+        # Purpose: Run transform on small data set with the section size over 250 bytes
+        # Expectation: The resulting data should be transformed correctly
+
+        data = array('i')
+
+        #Create bytearray of len 20
+        data.append(0)
+        data.append(33)
+        data.append(4)
+        data.append(99)
+        data.append(111)
+        data.append(22)
+        data.append(0)
+        data.append(145)
+        data.append(32)
+        data.append(4)
+        data.append(21)
+        data.append(4)
+        data.append(199)
+        data.append(111)
+        data.append(4)
+        data.append(0)
+        data.append(1)
+        data.append(3)
+        data.append(7)
+        data.append(8)
+
+        test_kompressor = Kompressor(1024, 0x00, 0, 0x00, 0, 10)
+
+        transformedData = array('i', [0xFF]*22)
+
+        outputLen = test_kompressor._performBWTransform(data, 20, transformedData, 22)
+
+        self.assertEqual(22, outputLen)
+        self.assertEqual(1, transformedData[0])
+        self.assertEqual(0, transformedData[1])
+        self.assertEqual(4, transformedData[2])
+        self.assertEqual(8, transformedData[3])
+        self.assertEqual(22, transformedData[4])
+        self.assertEqual(0, transformedData[5])
+        self.assertEqual(1, transformedData[6])
+        self.assertEqual(111, transformedData[7])
+        self.assertEqual(32, transformedData[8])
+        self.assertEqual(33, transformedData[9])
+        self.assertEqual(21, transformedData[10])
+        self.assertEqual(3, transformedData[11])
+        self.assertEqual(7, transformedData[12])
+        self.assertEqual(4, transformedData[13])
+        self.assertEqual(111, transformedData[14])
+        self.assertEqual(145, transformedData[15])
+        self.assertEqual(0, transformedData[16])
+        self.assertEqual(4, transformedData[17])
+        self.assertEqual(199, transformedData[18])
+        self.assertEqual(99, transformedData[19])
+        self.assertEqual(0, transformedData[20])
+        self.assertEqual(4, transformedData[21])
 
     def test_performBWTransform_3(self):
         # Purpose: Run transform on larger data set

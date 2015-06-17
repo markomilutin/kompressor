@@ -47,15 +47,19 @@ class Kompressor:
             raise Exception('Section size must be greater than 0')
 
         self.mSectionSize = sectionSize_
-        self.mSectionTransformData = array('i', [0]*sectionSize_)
         self.mSpecialSymbol1 = specialSymbol1_
         self.mSpecialSymbol1MaxRun = specialSymbol1MaxRun_
+        self.mSpecialSymbol1RunLengthStart = self.BASE_BINARY_VOCABULARY_SIZE
         self.mSpecialSymbol2 = specialSymbol2_
         self.mSpecialSymbol2MaxRun = specialSymbol2MaxRun_
+        self.mSpecialSymbol2RunLengthStart = self.mSpecialSymbol1RunLengthStart + self.mSpecialSymbol1MaxRun
         self.mGenericMaxRun = genericMaxRun_
+        self.mGenericRunLengthStart = self.mSpecialSymbol2RunLengthStart + self.mSpecialSymbol2MaxRun
 
         self.mVocabularySize = self.BASE_BINARY_VOCABULARY_SIZE + specialSymbol1MaxRun_ + specialSymbol2MaxRun_ + genericMaxRun_
-        self.mBWTransforStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
+        self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
+        self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
+        self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
         self.mEncoder = AREncoder(32, self.mVocabularySize)
 
         self.mContinuousModeEnabled = False
@@ -210,18 +214,18 @@ class Kompressor:
 
         return 0
 
-    def _performBWTransform(self, dataSection_, dataSize_, transformedData_, transformedDataLen_):
+    def _performBWTransform(self, dataSection_, dataSize_, transformedData_, transformedDataMaxLen_):
         """ Perform BW transform on dataSection_. This transform will maximize the chances of equal bytes being grouped
             together. The result will be stored in transformedData_
 
         :param dataSection_: The data to be transformed which is an array
         :param dataSize_: The length of the data to be transformed
-        :param transformedData_: The transformed data will be stored here. There must be at least inLen_ + 1 bytes available. This is an array
-        :param transformedDataLen_: The length of outputData_. Must be at least inLen_ + 1 bytes
+        :param transformedData_: The transformed data will be stored here. There must be at least inLen_ + self.mBWTransformStoreBytes bytes available. This is an array
+        :param transformedDataLen_: The length of outputData_. Must be at least inLen_ + self.mBWTransformStoreBytes bytes
         :return: The size of the transformed data
         """
 
-        if(transformedDataLen_ < (dataSize_ + 1)):
+        if(transformedDataMaxLen_ < (dataSize_ + self.mBWTransformStoreBytes)):
             raise Exception("Output data array to small")
 
         # The full array is the first boundary
@@ -272,12 +276,14 @@ class Kompressor:
         #Find the original data sequence in the sorted indecesOfDataPermutations
         originalSequenceIndex = indecesOfDataPermutations.find(0)
 
-        transformedData_[0] = originalSequenceIndex
+        # Add the original sequence index at the front of the transform (split into bytes, little endian)
+        for i in range(0, self.mBWTransformStoreBytes):
+            transformedData_[i] = ((originalSequenceIndex >> (i*8)) & 0xFF)
 
-        for i in range(1, dataSize_+1):
-            transformedData_[i] = dataSection_[(dataSize_ - 1 + indecesOfDataPermutations[i-1])%dataSize_]
+        for i in range(self.mBWTransformStoreBytes, dataSize_ + self.mBWTransformStoreBytes):
+            transformedData_[i] = dataSection_[(dataSize_ - 1 + indecesOfDataPermutations[i-self.mBWTransformStoreBytes])%dataSize_]
 
-        return (dataSize_ + 1)
+        return (dataSize_ + self.mBWTransformStoreBytes)
 
     def kompress(self, inputData_, inputDataLen_, outputData_, maxOutputLen_):
         """
@@ -293,14 +299,27 @@ class Kompressor:
 
         # If data exceeds section size throw exception
         if(inputDataLen_ > self.mSectionSize):
-            raise Exception('Data lenghts exceeds max section size')
+            raise Exception('Data length exceeds max section size')
 
         # Perform first character replacement if possible
         if(self.mSpecialSymbol1MaxRun > 1):
-            inputDataLen_ = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
+            inputDataLen_ = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
 
-        transformedDataLen = self._performBWTransform()
+        # Transform data using BW transform
+        transformedDataLen = self._performBWTransform(inputData_, inputDataLen_, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
 
+        # Perform second character replacement if possible
+        if(self.mSpecialSymbol2MaxRun > 1):
+            transformedDataLen = self._replaceRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mSectionTransformData, transformedDataLen)
+
+        # Perform generic symbol run replacement
+        transformedDataLen = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, transformedDataLen)
+
+        # Encode the data
+        self.mSectionTransformData.append(self.TERMINATION_SYMBOL)
+        transformedDataLen += 1
+
+        return self.mEncoder.encode(self.mSectionTransformData, transformedDataLen, outputData_, maxOutputLen_)
 
     def kompressStartContinuous(self, totalDataToCompress_):
         """
