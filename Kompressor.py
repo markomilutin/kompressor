@@ -316,7 +316,7 @@ class Kompressor:
         transformedDataLen = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, transformedDataLen)
 
         # Encode the data
-        self.mSectionTransformData.append(self.TERMINATION_SYMBOL)
+        self.mSectionTransformData[transformedDataLen] = self.TERMINATION_SYMBOL
         transformedDataLen += 1
 
         return self.mEncoder.encode(self.mSectionTransformData, transformedDataLen, outputData_, maxOutputLen_)
