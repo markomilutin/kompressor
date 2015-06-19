@@ -6,6 +6,7 @@ This class will implement an Arithmetic Coding encoder
 
 import array
 import utils
+import math
 
 class AREncoder:
     def __init__(self, wordSize_, vocabularySize_):
@@ -32,32 +33,35 @@ class AREncoder:
 
         # We are initializing with an assumption of a value of 1 for the count of each symbol. The initial cumulative count data will just be an incrementing series up to vocabulary size
         self.mSymbolCumulativeCount = array.array('i', range(1, self.mVocabularySize + 1))         # Hold current count of symbols encountered
-        self.mCompressedData = None
 
         # Reset all the
-        self._init_members()
+        self.reset()
 
-    def _init_members(self):
+    def reset(self):
         """
         Reset all member variables that are not constant for the duration of the object life
 
         :return: None
         """
 
-        self.mCompressedDataCount = int(0)                                         # The number of bytes compressed data is taking up
-        self._mTotalSymbolCount = self.mVocabularySize                              # The total number of symbols encountered
-        self._mLowerTag = 0                                                         # The lower tag threshold
-        self._mUpperTag = 0                                                         # The upper tag threshold
-        self._mE3ScaleCount = 0                                                     # Holds the number of E3 mappings currently outstanding
-        self._mCurrentBitCount = 0                                                  # The current number of bits loaded onto the _mCurrentByte variable
+        self.mEncodedData = None
+        self.mMaxEncodedDataLen = 0                                                # The max number of bytes that can be stored in mEncodedData
+        self.mEncodedDataCount = int(0)                                         # The number of bytes compressed data is taking up
+        self.mTotalSymbolCount = self.mVocabularySize                              # The total number of symbols encountered
+        self.mE3ScaleCount = 0                                                     # Holds the number of E3 mappings currently outstanding
+        self.mCurrentBitCount = 0                                                  # The current number of bits loaded onto the mCurrentByte variable
 
         # We are initializing with an assumption of a value of 1 for the count of each symbol. The initial cumulative count data will just be an incrementing series up to vocabulary size
         for i in range(0,self.mVocabularySize):
             self.mSymbolCumulativeCount[i] = (i + 1)
 
+        # Initialize the range tags to min and max
+        self.mLowerTag = 0
+        self.mUpperTag = self.mWordBitMask
+
     def _append_bit(self, bitValue_):
         """
-        Take the incoming bit and append it to the _mCurrentByte. Once 8 bits have been appended move to the next
+        Take the incoming bit and append it to the mCurrentByte. Once 8 bits have been appended move to the next
         index of the compressed data array
 
         :param bitValue: The bit to be appended to the current outstanding compression byte
@@ -65,21 +69,21 @@ class AREncoder:
         """
 
         # Store the current bit onto the pending byte
-        self.mCompressedData[self.mCompressedDataCount] = ((self.mCompressedData[self.mCompressedDataCount] << 1) | bitValue_) & 0xFF
+        self.mEncodedData[self.mEncodedDataCount] = ((self.mEncodedData[self.mEncodedDataCount] << 1) | bitValue_) & 0xFF
 
         # Increment the count of bits stored
-        self._mCurrentBitCount += 1
+        self.mCurrentBitCount += 1
 
         # If max number of bits have been appended, move to compressed data byte array
-        if(self._mCurrentBitCount == 8):
-            self.mCompressedDataCount += 1
+        if(self.mCurrentBitCount == 8):
+            self.mEncodedDataCount += 1
 
-            # If there is no more room extend the bytearray by BASE_OUT_SIZE bytes
-            if(self.mCompressedDataCount >= len(self.mCompressedData)):
-                self.mCompressedData.extend(bytearray(self.BASE_OUT_SIZE))
+            # If there is no more room throw exception
+            if(self.mEncodedDataCount >= self.mMaxEncodedDataLen):
+                raise Exception('Out of space')
 
-            self._mCurrentBitCount = 0
-            self.mCompressedData[self.mCompressedDataCount] = int(0)
+            self.mCurrentBitCount = 0
+            self.mEncodedData[self.mEncodedDataCount] = int(0)
 
     def _increment_count(self, indexToIncrement_):
         """
@@ -96,10 +100,10 @@ class AREncoder:
         for i in range(indexToIncrement_, vocabularySize):
             cumulativeCountValues[i] += 1
 
-        self._mTotalSymbolCount += 1
+        self.mTotalSymbolCount += 1
 
         # If we have reached the max number of bytes, we need to normalize the stats to allow us to continue
-        if(self._mTotalSymbolCount >= self._mMaxCompressionBytes):
+        if(self.mTotalSymbolCount >= self.mMaxCompressionBytes):
             self._normalize_stats()
 
     def _rescale(self):
@@ -114,9 +118,9 @@ class AREncoder:
         :return:None
         """
 
-        sameMSB = ((self._mLowerTag & self._mWordMSBMask) == (self._mUpperTag & self._mWordMSBMask))
-        valueMSB = ((self._mLowerTag & self._mWordMSBMask) >> (self._mWordSize -1)) & 0x0001
-        tagRangeInMiddle = (((self._mUpperTag & self._mWordSecondMSBMask) == 0) and ((self._mLowerTag & self._mWordSecondMSBMask) == self._mWordSecondMSBMask))
+        sameMSB = ((self.mLowerTag & self.mWordMSBMask) == (self.mUpperTag & self.mWordMSBMask))
+        valueMSB = ((self.mLowerTag & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
+        tagRangeInMiddle = (((self.mUpperTag & self.mWordSecondMSBMask) == 0) and ((self.mLowerTag & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
 
 
         while(sameMSB or tagRangeInMiddle):
@@ -124,36 +128,37 @@ class AREncoder:
             # If the first bit is the same we need to perform E1 or E2 scaling. The same set of steps applies to both. If the range is in the middle we need to perform E3 scaling
             if(sameMSB):
                 self._append_bit(valueMSB)
-                self._mLowerTag = (self._mLowerTag << 1) & self._mWordBitMask
-                self._mUpperTag = ((self._mUpperTag << 1) | 0x0001) & self._mWordBitMask
+                self.mLowerTag = (self.mLowerTag << 1) & self.mWordBitMask
+                self.mUpperTag = ((self.mUpperTag << 1) | 0x0001) & self.mWordBitMask
 
-                while(self._mE3ScaleCount > 0):
+                while(self.mE3ScaleCount > 0):
                     self._append_bit((~valueMSB) & 0x0001)
-                    self._mE3ScaleCount -= 1
+                    self.mE3ScaleCount -= 1
 
             elif(tagRangeInMiddle):
-                self._mLowerTag = (self._mLowerTag << 1) & self._mWordBitMask
-                self._mUpperTag = (self._mUpperTag << 1) & self._mWordBitMask
+                self.mLowerTag = (self.mLowerTag << 1) & self.mWordBitMask
+                self.mUpperTag = (self.mUpperTag << 1) & self.mWordBitMask
 
-                self._mLowerTag = ((self._mLowerTag & (~self._mWordMSBMask)) | ((~self._mLowerTag) & self._mWordMSBMask))
-                self._mUpperTag = ((self._mUpperTag & (~self._mWordMSBMask)) | ((~self._mUpperTag) & self._mWordMSBMask))
+                self.mLowerTag = ((self.mLowerTag & (~self.mWordMSBMask)) | ((~self.mLowerTag) & self.mWordMSBMask))
+                self.mUpperTag = ((self.mUpperTag & (~self.mWordMSBMask)) | ((~self.mUpperTag) & self.mWordMSBMask))
 
-                self._mE3ScaleCount += 1
+                self.mE3ScaleCount += 1
 
 
-            sameMSB = ((self._mLowerTag & self._mWordMSBMask) == (self._mUpperTag & self._mWordMSBMask))
-            valueMSB = ((self._mLowerTag & self._mWordMSBMask) >> (self._mWordSize -1)) & 0x0001
-            tagRangeInMiddle = (((self._mUpperTag & self._mWordSecondMSBMask) == 0) and ((self._mLowerTag & self._mWordSecondMSBMask) == self._mWordSecondMSBMask))
+            sameMSB = ((self.mLowerTag & self.mWordMSBMask) == (self.mUpperTag & self.mWordMSBMask))
+            valueMSB = ((self.mLowerTag & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
+            tagRangeInMiddle = (((self.mUpperTag & self.mWordSecondMSBMask) == 0) and ((self.mLowerTag & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
 
     def _update_range_tags(self, newSymbolIndex_):
-        """ Update the upper and lower tags according to stats for the incoming symbol
+        """
+        Update the upper and lower tags according to stats for the incoming symbol
 
         :param newSymbol_: Current symbol being encoded
         :return:
         """
 
-        prevLowerTag = self._mLowerTag
-        prevUpperTag = self._mUpperTag
+        prevLowerTag = self.mLowerTag
+        prevUpperTag = self.mUpperTag
         rangeDiff = prevUpperTag - prevLowerTag
         cumulativeCountSymbol = self.mSymbolCumulativeCount[newSymbolIndex_]
         cumulativeCountPrevSymbol = 0
@@ -162,19 +167,20 @@ class AREncoder:
         if(newSymbolIndex_ >= 1):
             cumulativeCountPrevSymbol = self.mSymbolCumulativeCount[newSymbolIndex_-1]
 
-        self._mLowerTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountPrevSymbol))/self._mTotalSymbolCount))
-        self._mUpperTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol))/self._mTotalSymbolCount - 1))
+        self.mLowerTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountPrevSymbol))/self.mTotalSymbolCount))
+        self.mUpperTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol))/self.mTotalSymbolCount - 1))
 
         self._increment_count(newSymbolIndex_)
 
     def _normalize_stats(self):
-        """ Divide the total count for each vocabulary by 2, the new value must be at least one. Use the cumulative
-            vocabulary counts to accomplish this, Get new total symbol count from the entries
+        """
+        Divide the total count for each vocabulary by 2, the new value must be at least one. Use the cumulative
+        vocabulary counts to accomplish this, Get new total symbol count from the entries
 
         :return: None
         """
 
-        self._mTotalSymbolCount = 0
+        self.mTotalSymbolCount = 0
         prevOldCumulativeCount = 0
 
         # Go through all the entries in the cumulative count array
@@ -200,37 +206,50 @@ class AREncoder:
             else:
                 self.mSymbolCumulativeCount[i] = indexCount
 
-            self._mTotalSymbolCount += indexCount
-
-
-    def _compressSymbol(self, symbol):
-        """ Compress each incoming symbol by updating the range tags to encode this symbol and rescaling
-
-        :param symbol: The symbol to be encoded
-        :return:
-        """
-        self._update_range_tags(symbol)
-        self._rescale()
+            self.mTotalSymbolCount += indexCount
 
     def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_):
         """
-        Encode the data one byte at a time.
+        Encode the data passed in. The encoded data will be stored in encodedData_ and if there is not enough room an
+        exception will be thrown. Encoding statistics will not be reset when this function is called. It is up-to the caller
+        to ensure that statistics are initialized properly if required.
 
         :param dataToEncode_: The data that needs to be compressed (integer array)
         :param dataLen_: The length of data that needs to be compressed
         :param encodedData_: The compressed data should be stored in this byte array
-        :param maxEncodedDataLen_ : The max length of compressed data that can be stored in compressesdData_
+        :param maxEncodedDataLen_ : The max length of compressed data that can be stored in encodedData_
 
         :return: The number of bytes stored in encodedData_
         """
-        pass
 
-    def reset(self):
-        """
-        Reset the encoder statistics
+        # If the byte array is smaller than data length pass in throw exception
+        if(len(dataToEncode_) < dataLen_):
+            raise Exception("Data byte array passed in smaller than expected")
 
-        :return:
-        """
-        pass
+        # If the byte array is smaller than data length pass in throw exception
+        if(len(encodedData_) < maxEncodedDataLen_):
+            raise Exception("Encoded data byte array passed in smaller than expected")
 
+        self.mMaxEncodedDataLen = maxEncodedDataLen_
 
+        # Go through and compress data one byte at a time
+        for i in range(0, dataLen_):
+            self._update_range_tags(dataToEncode_[i])
+            self._rescale()
+
+        # Store the current state of the lower tag to mark the completion of the compression
+        for i in range(0, self.mWordSize):
+            bitValue = (self.mLowerTag >> ((self.mWordSize - 1) - i)) & 0x0001
+
+            self._append_bit(bitValue)
+
+            # Ensure we account for any E3 scaling
+            while(self.mE3ScaleCount > 0):
+                self._append_bit((~bitValue) & 0x0001)
+                self.mE3ScaleCount -= 1
+
+        # Ensure that the current byte is added to the compressed data length if there are any outstanding bits on it
+        if(self.mCurrentBitCount != 0):
+            self.mEncodedDataCount += 1
+
+        return self.mEncodedDataCount
