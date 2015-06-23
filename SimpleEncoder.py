@@ -40,6 +40,7 @@ class SimpleEncoder:
         if(len(encodedData_) < maxEncodedDataLen_):
             raise Exception("Compressed data byte array passed in smaller than expected")
 
+        # Copy the data to the internal buffer
         for i in range(0, dataLen_):
             symbol = dataToEncode_[i]
 

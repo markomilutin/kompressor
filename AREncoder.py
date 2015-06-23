@@ -230,6 +230,7 @@ class AREncoder:
         if(len(encodedData_) < maxEncodedDataLen_):
             raise Exception("Encoded data byte array passed in smaller than expected")
 
+        self.mEncodedData = encodedData_
         self.mMaxEncodedDataLen = maxEncodedDataLen_
 
         # Go through and compress data one byte at a time

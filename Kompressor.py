@@ -9,7 +9,7 @@ this implementation.
 
 The compressor will go through five stages in order to compress the data.
 
-The stages are as follows
+The stages are as follows:
     1. If defined, replaces runs (2 - defined) of special symbol #1 by extended symbols. Extended symbols will be added
        to support replacing runs of data.
     2. The Burrows-Wheeler transform will be performed on the data. This stage will maximize the runs of symbols
@@ -42,7 +42,7 @@ class Kompressor:
         :return:
         """
 
-        #Section size must be greater than 0
+        # Section size must be greater than 0
         if(sectionSize_ < 1):
             raise Exception('Section size must be greater than 0')
 

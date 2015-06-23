@@ -17,625 +17,624 @@ class TestAREncoder(unittest.TestCase):
         # Purpose: Instantiate kompressor with valid parameters
         # Expectation: The member variables should be initialized correctly
 
-        test_kompressor = AREncoder(11, 257)
+        test_encoder = AREncoder(11, 257)
 
-        self.assertEqual(512, test_kompressor.mMaxCompressionBytes)
-        self.assertEqual(11, test_kompressor.mWordSize)
-        self.assertEqual(0x07FF, test_kompressor.mWordBitMask)
-        self.assertEqual(0x0400, test_kompressor.mWordMSBMask)
-        self.assertEqual(0x0200, test_kompressor.mWordSecondMSBMask)
-        self.assertNotEqual(None, test_kompressor.mSymbolCumulativeCount)
-        self.assertEqual(None, test_kompressor.mEncodedData)
+        self.assertEqual(512, test_encoder.mMaxCompressionBytes)
+        self.assertEqual(11, test_encoder.mWordSize)
+        self.assertEqual(0x07FF, test_encoder.mWordBitMask)
+        self.assertEqual(0x0400, test_encoder.mWordMSBMask)
+        self.assertEqual(0x0200, test_encoder.mWordSecondMSBMask)
+        self.assertNotEqual(None, test_encoder.mSymbolCumulativeCount)
+        self.assertEqual(None, test_encoder.mEncodedData)
 
-        self.assertEqual(257, test_kompressor.mTotalSymbolCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2047, test_kompressor.mUpperTag)
-        self.assertEqual(0, test_kompressor.mE3ScaleCount)
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
+        self.assertEqual(257, test_encoder.mTotalSymbolCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2047, test_encoder.mUpperTag)
+        self.assertEqual(0, test_encoder.mE3ScaleCount)
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
 
-        for i in range(0, test_kompressor.mVocabularySize):
-            self.assertEqual(1 + i, test_kompressor.mSymbolCumulativeCount[i])
+        for i in range(0, test_encoder.mVocabularySize):
+            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
 
     def test_reset(self):
         # Purpose: Re-initialize the members
         # Expectation: Ensure that data is initialized properly
 
-        test_kompressor = AREncoder(11,256)
+        test_encoder = AREncoder(11,256)
 
-        test_kompressor.mTotalSymbolCount = 49
-        test_kompressor.mEncodedDataCount = 33
-        test_kompressor.mLowerTag = 7
-        test_kompressor.mUpperTag = 9
-        test_kompressor.mE3ScaleCount = 99
-        test_kompressor.mCurrentByte = 0xFF
-        test_kompressor.mCurrentBitCount = 9
-
-        # Initialize byte array to a count of one for each symbol
-        for i in range(0, 256):
-            test_kompressor.mSymbolCumulativeCount[i] = 4
-
-        test_kompressor.reset();
-
-        self.assertNotEqual(None, test_kompressor.mSymbolCumulativeCount)
-        self.assertEqual(None, test_kompressor.mEncodedData)
-        self.assertEqual(256, test_kompressor.mTotalSymbolCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2047, test_kompressor.mUpperTag)
-        self.assertEqual(0, test_kompressor.mE3ScaleCount)
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
+        test_encoder.mTotalSymbolCount = 49
+        test_encoder.mEncodedDataCount = 33
+        test_encoder.mLowerTag = 7
+        test_encoder.mUpperTag = 9
+        test_encoder.mE3ScaleCount = 99
+        test_encoder.mCurrentByte = 0xFF
+        test_encoder.mCurrentBitCount = 9
 
         # Initialize byte array to a count of one for each symbol
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_kompressor.mSymbolCumulativeCount[i])
+            test_encoder.mSymbolCumulativeCount[i] = 4
+
+        test_encoder.reset();
+
+        self.assertNotEqual(None, test_encoder.mSymbolCumulativeCount)
+        self.assertEqual(None, test_encoder.mEncodedData)
+        self.assertEqual(256, test_encoder.mTotalSymbolCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2047, test_encoder.mUpperTag)
+        self.assertEqual(0, test_encoder.mE3ScaleCount)
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
+
+        # Initialize byte array to a count of one for each symbol
+        for i in range(0, 256):
+            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
 
 
     def test_append_bitmax_not_reached(self):
         # Purpose: Append bits but ensure that the max of 8 is not exceeded
         # Expectation: The current byte should contain the passed in bits and the bit count should be correct
 
-        test_kompressor = AREncoder(11, 256)
-        test_kompressor.mEncodedData = bytearray(1024)
+        test_encoder = AREncoder(11, 256)
+        test_encoder.mEncodedData = bytearray(1024)
 
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
 
-        self.assertEqual(7, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0x4D, test_kompressor.mEncodedData[0])
-        self.assertEqual(0, test_kompressor.mEncodedData[1])
+        self.assertEqual(7, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0x4D, test_encoder.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedData[1])
 
     def test_append_bitmax_reached(self):
         # Purpose: Append bits up to max of 8
         # Expectation: The current byte should be 0 and the previous value should be in the compressed data byte array
 
-        test_kompressor = AREncoder(11, 256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11, 256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
 
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
-        self.assertEqual(1, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0x9B, test_kompressor.mEncodedData[0])
-        self.assertEqual(0, test_kompressor.mEncodedData[1])
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
+        self.assertEqual(1, test_encoder.mEncodedDataCount)
+        self.assertEqual(0x9B, test_encoder.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedData[1])
 
     def test_append_bit_past_one_byte(self):
         # Purpose: Append bits past max of 8 bits per byte
         # Expectation: The current byte should be based on bits past 8 and the previous value should be based on the first 8 bits
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
-        test_kompressor._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
+        test_encoder._append_bit(1)
 
-        self.assertEqual(4, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0x0F, test_kompressor.mEncodedData[1])
-        self.assertEqual(1, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0x9B, test_kompressor.mEncodedData[0])
+        self.assertEqual(4, test_encoder.mCurrentBitCount)
+        self.assertEqual(0x0F, test_encoder.mEncodedData[1])
+        self.assertEqual(1, test_encoder.mEncodedDataCount)
+        self.assertEqual(0x9B, test_encoder.mEncodedData[0])
 
     def test_append_bit_pastmax_byte(self):
         # Purpose: Append bits past max bytes
         # Expectation: An exception should be thrown
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(65536)
-        test_kompressor.mMaxEncodedDataLen = 65536
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(65536)
+        test_encoder.mMaxEncodedDataLen = 65536
 
-        self.assertEqual(65536, len(test_kompressor.mEncodedData))
+        self.assertEqual(65536, len(test_encoder.mEncodedData))
 
         # Fill up byte array
         for i in range(0, 65535*8):
-            test_kompressor._append_bit(1)
+            test_encoder._append_bit(1)
 
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
-        test_kompressor._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
+        test_encoder._append_bit(0)
 
-        self.assertEqual(65536, len(test_kompressor.mEncodedData))
+        self.assertEqual(65536, len(test_encoder.mEncodedData))
 
         # Push it over the current max
         with self.assertRaises(Exception):
-            test_kompressor._append_bit(1)
-            test_kompressor._append_bit(1)
+            test_encoder._append_bit(1)
+            test_encoder._append_bit(1)
 
     def test_increment_count(self):
         # Purpose: Increment various indexes
         # Expectation: The cumulative counts will be updated appropriately
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
 
-        self.assertEqual(256, test_kompressor.mSymbolCumulativeCount[255])
-        self.assertEqual(256, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(256, test_encoder.mSymbolCumulativeCount[255])
+        self.assertEqual(256, test_encoder.mTotalSymbolCount)
 
-        test_kompressor._increment_count(0)
+        test_encoder._increment_count(0)
 
         for i in range(0, 256):
-            self.assertEqual(2 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
 
-        self.assertEqual(257, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(257, test_encoder.mTotalSymbolCount)
 
-        test_kompressor._increment_count(50)
-        self.assertEqual(258, test_kompressor.mTotalSymbolCount)
+        test_encoder._increment_count(50)
+        self.assertEqual(258, test_encoder.mTotalSymbolCount)
 
         for i in range(0, 50):
-            self.assertEqual(2 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
 
         for i in range(50, 256):
-            self.assertEqual(3 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(3 + i, test_encoder.mSymbolCumulativeCount[i])
 
-        test_kompressor._increment_count(50)
-        self.assertEqual(259, test_kompressor.mTotalSymbolCount)
+        test_encoder._increment_count(50)
+        self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
         for i in range(0, 50):
-            self.assertEqual(2 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
 
         for i in range(50, 256):
-            self.assertEqual(4 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(4 + i, test_encoder.mSymbolCumulativeCount[i])
 
-        self.assertEqual(259, test_kompressor.mSymbolCumulativeCount[255])
+        self.assertEqual(259, test_encoder.mSymbolCumulativeCount[255])
 
-        test_kompressor._increment_count(255)
-        self.assertEqual(260, test_kompressor.mTotalSymbolCount)
+        test_encoder._increment_count(255)
+        self.assertEqual(260, test_encoder.mTotalSymbolCount)
 
         for i in range(0, 50):
-            self.assertEqual(2 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
 
         for i in range(50, 255):
-            self.assertEqual(4 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(4 + i, test_encoder.mSymbolCumulativeCount[i])
 
-        self.assertEqual(260, test_kompressor.mSymbolCumulativeCount[255])
+        self.assertEqual(260, test_encoder.mSymbolCumulativeCount[255])
 
 
     def test_increment_count_pastmax(self):
         # Purpose: Increment various indexes until we surpass the max bytes
         # Expectation: The stats should be normalized
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
 
         for i in range(0, 100):
-            test_kompressor._increment_count(0)
+            test_encoder._increment_count(0)
 
         for i in range(0, 100):
-            test_kompressor._increment_count(200)
+            test_encoder._increment_count(200)
 
-        self.assertEqual(456, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(456, test_encoder.mTotalSymbolCount)
 
         for i in range(0, 55):
-            test_kompressor._increment_count(255)
+            test_encoder._increment_count(255)
 
-        self.assertEqual(511, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(511, test_encoder.mTotalSymbolCount)
 
-        test_kompressor._increment_count(255)
+        test_encoder._increment_count(255)
 
         # Normalization should occur now
 
         # Ensure each entry is greater than previous one which ensure that each symbol count is at least 0
         for i in range(1, 256):
-            self.assertGreater(test_kompressor.mSymbolCumulativeCount[i], test_kompressor.mSymbolCumulativeCount[i-1])
+            self.assertGreater(test_encoder.mSymbolCumulativeCount[i], test_encoder.mSymbolCumulativeCount[i-1])
 
-        self.assertEqual(50, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(50, test_kompressor.mSymbolCumulativeCount[200] - test_kompressor.mSymbolCumulativeCount[199])
-        self.assertEqual(28, test_kompressor.mSymbolCumulativeCount[255] - test_kompressor.mSymbolCumulativeCount[254])
+        self.assertEqual(50, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(50, test_encoder.mSymbolCumulativeCount[200] - test_encoder.mSymbolCumulativeCount[199])
+        self.assertEqual(28, test_encoder.mSymbolCumulativeCount[255] - test_encoder.mSymbolCumulativeCount[254])
 
-        self.assertEqual(381, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(381, test_encoder.mTotalSymbolCount)
 
     def test_rescale_none_required(self):
         # Purpose: Call when the lower and upper tag are in a range that requires no rescaling
         # Expectation: The tags should not be modified and no bits should be added to compressed data
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 510    # b00111111110 (just below quarter mark)
-        test_kompressor.mUpperTag = 1025   # b10000000001 (halfway point)
+        test_encoder.mLowerTag = 510    # b00111111110 (just below quarter mark)
+        test_encoder.mUpperTag = 1025   # b10000000001 (halfway point)
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        self.assertEqual(510, test_kompressor.mLowerTag)
-        self.assertEqual(1025, test_kompressor.mUpperTag)
+        self.assertEqual(510, test_encoder.mLowerTag)
+        self.assertEqual(1025, test_encoder.mUpperTag)
 
     def test_rescale_E1_required(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E1 scaling
         # Expectation: The tags should be modified according to E1 and a 0 bit should be added to compressed data
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 0     # b00000000000 (0)
-        test_kompressor.mUpperTag = 1023  # b01111111111 (just below halfway point)
+        test_encoder.mLowerTag = 0     # b00000000000 (0)
+        test_encoder.mUpperTag = 1023  # b01111111111 (just below halfway point)
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(1, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(1, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2047, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2047, test_encoder.mUpperTag)
 
     def test_rescale_E1_required_with_E3ScaleCount(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E1 scaling and there is a count of 2 on the E3 Scale Count
         # Expectation: The tags should be modified according to E1 and a 0 bit should be added to compressed data. Two 0 bits should be added to compensate for E3 Scale Count
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 0      # b00000000000 (0)
-        test_kompressor.mUpperTag = 1022   # b01111111110 (just below halfway point)
+        test_encoder.mLowerTag = 0      # b00000000000 (0)
+        test_encoder.mUpperTag = 1022   # b01111111110 (just below halfway point)
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor.mE3ScaleCount = 2
+        test_encoder.mE3ScaleCount = 2
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(0, test_kompressor.mE3ScaleCount)
-        self.assertEqual(3, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(3, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mE3ScaleCount)
+        self.assertEqual(3, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(3, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2045, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2045, test_encoder.mUpperTag)
 
     def test_rescale_E1_requiredmultiple(self):
         # Purpose: Call when the lower and upper tag are in a range that requires multiple E1 scalings
         # Expectation: The tags should be modified according to E1 and a 0 bit should be added to compressed data as many times as E1 was performed
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 0    # b00000000000
-        test_kompressor.mUpperTag = 256  # b00100000000
+        test_encoder.mLowerTag = 0    # b00000000000
+        test_encoder.mUpperTag = 256  # b00100000000
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(2, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(2, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1027, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1027, test_encoder.mUpperTag)
 
     def test_rescale_E2_required(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E2 scaling
         # Expectation: The tags should be modified according to E2 and a 1 bit should be added to compressed data
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 1024   # b10000000000 (above halfway)
-        test_kompressor.mUpperTag = 2012   # b11111011100
+        test_encoder.mLowerTag = 1024   # b10000000000 (above halfway)
+        test_encoder.mUpperTag = 2012   # b11111011100
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(1, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(1, test_kompressor.mEncodedData[0])
+        self.assertEqual(1, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(1, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1977, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1977, test_encoder.mUpperTag)
 
     def test_rescale_E2_required_with_E3ScaleCount(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E2 scaling and there is a count of 2 on the E3 Scale Count
         # Expectation: The tags should be modified according to E2 and a 1 bit should be added to compressed data. Two 0 bits should be added to compensate for E3 Scale Count
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 1024   # b10000000000 (above halfway)
-        test_kompressor.mUpperTag = 2012   # b11111011100
+        test_encoder.mLowerTag = 1024   # b10000000000 (above halfway)
+        test_encoder.mUpperTag = 2012   # b11111011100
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor.mE3ScaleCount = 2
+        test_encoder.mE3ScaleCount = 2
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(0, test_kompressor.mE3ScaleCount)
-        self.assertEqual(3, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0x4, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mE3ScaleCount)
+        self.assertEqual(3, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0x4, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1977, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1977, test_encoder.mUpperTag)
 
     def test_rescale_E2_requiredmultiple(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E2 scaling multiple times
         # Expectation: The tags should be modified according to E2 and a 1 bit should be added to compressed data for each scaling
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 1536   # b11000000000
-        test_kompressor.mUpperTag = 2047   # b11111111111
+        test_encoder.mLowerTag = 1536   # b11000000000
+        test_encoder.mUpperTag = 2047   # b11111111111
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(2, test_kompressor.mCurrentBitCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0x3, test_kompressor.mEncodedData[0])
+        self.assertEqual(2, test_encoder.mCurrentBitCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0x3, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2047, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2047, test_encoder.mUpperTag)
 
     def test_rescale_E3_required(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E3 scaling
         # Expectation: The tags should be modified according to E3 and the E3 scale count should be incremented
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 512    # b01000000000 (above quarter mark)
-        test_kompressor.mUpperTag = 1500   # b10111011100 (below 3 quarters mark
+        test_encoder.mLowerTag = 512    # b01000000000 (above quarter mark)
+        test_encoder.mUpperTag = 1500   # b10111011100 (below 3 quarters mark
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
-        self.assertEqual(1, test_kompressor.mE3ScaleCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
+        self.assertEqual(1, test_encoder.mE3ScaleCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1976, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1976, test_encoder.mUpperTag)
 
     def test_rescale_E3multiple(self):
         # Purpose: Call when the lower and upper tag are in a range that requires E3 scaling multiple times
         # Expectation: The tags should be modified by E3
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 812    # b01100101100
-        test_kompressor.mUpperTag = 1162   # b10010001010
+        test_encoder.mLowerTag = 812    # b01100101100
+        test_encoder.mUpperTag = 1162   # b10010001010
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_kompressor._rescale()
+        test_encoder._rescale()
 
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
-        self.assertEqual(2, test_kompressor.mE3ScaleCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
+        self.assertEqual(2, test_encoder.mE3ScaleCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        self.assertEqual(176, test_kompressor.mLowerTag)
-        self.assertEqual(1576, test_kompressor.mUpperTag)
+        self.assertEqual(176, test_encoder.mLowerTag)
+        self.assertEqual(1576, test_encoder.mUpperTag)
 
     def test_update_range_tags(self):
         # Purpose: Test updating the upper lower tags with incoming symbols
         # Expectation: The upper and lower tags should be updated correctly and the stat counts should be incremented appropriately
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
-        test_kompressor.mLowerTag = 0
-        test_kompressor.mUpperTag = 2047
+        test_encoder.mLowerTag = 0
+        test_encoder.mUpperTag = 2047
 
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 1 out of total count of 256
-        test_kompressor._update_range_tags(0)
+        test_encoder._update_range_tags(0)
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(7, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(7, test_encoder.mUpperTag)
 
-        self.assertEqual(2, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(257, test_kompressor.mTotalSymbolCount)
-        self.assertEqual(0, test_kompressor.mEncodedDataCount)
+        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(257, test_encoder.mTotalSymbolCount)
+        self.assertEqual(0, test_encoder.mEncodedDataCount)
 
         # _rescale
-        test_kompressor._rescale();
+        test_encoder._rescale();
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(2047, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(2047, test_encoder.mUpperTag)
 
-        self.assertEqual(2, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(257, test_kompressor.mTotalSymbolCount)
-        self.assertEqual(1, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
-        self.assertEqual(0, test_kompressor.mCurrentBitCount)
+        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(257, test_encoder.mTotalSymbolCount)
+        self.assertEqual(1, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mCurrentBitCount)
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 2 out of total count of 257
-        test_kompressor._update_range_tags(0)
+        test_encoder._update_range_tags(0)
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(14, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(14, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(258, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(258, test_encoder.mTotalSymbolCount)
 
         # _rescale
-        test_kompressor._rescale();
+        test_encoder._rescale();
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1919, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1919, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(258, test_kompressor.mTotalSymbolCount)
-        self.assertEqual(1, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
-        self.assertEqual(0, test_kompressor.mEncodedData[1])
-        self.assertEqual(7, test_kompressor.mCurrentBitCount)
+        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(258, test_encoder.mTotalSymbolCount)
+        self.assertEqual(1, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
+        self.assertEqual(0, test_encoder.mEncodedData[1])
+        self.assertEqual(7, test_encoder.mCurrentBitCount)
 
         # Pass in index for symbol 0xAA which currently has cumulative count of count out of 173 total count of 258
-        self.assertEqual(172, test_kompressor.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(173, test_kompressor.mSymbolCumulativeCount[0xAA])
-        test_kompressor._update_range_tags(0xAA)
+        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
+        self.assertEqual(173, test_encoder.mSymbolCumulativeCount[0xAA])
+        test_encoder._update_range_tags(0xAA)
 
-        self.assertEqual(1280, test_kompressor.mLowerTag)
-        self.assertEqual(1286, test_kompressor.mUpperTag)
+        self.assertEqual(1280, test_encoder.mLowerTag)
+        self.assertEqual(1286, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_kompressor.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_kompressor.mSymbolCumulativeCount[0xAA])
-        self.assertEqual(259, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
+        self.assertEqual(174, test_encoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
         # _rescale
-        test_kompressor._rescale();
+        test_encoder._rescale();
 
-        self.assertEqual(0, test_kompressor.mLowerTag)
-        self.assertEqual(1791, test_kompressor.mUpperTag)
+        self.assertEqual(0, test_encoder.mLowerTag)
+        self.assertEqual(1791, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_kompressor.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_kompressor.mSymbolCumulativeCount[0xAA])
-        self.assertEqual(259, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
+        self.assertEqual(174, test_encoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
-        self.assertEqual(2, test_kompressor.mEncodedDataCount)
-        self.assertEqual(0, test_kompressor.mEncodedData[0])
-        self.assertEqual(1, test_kompressor.mEncodedData[1])
-        self.assertEqual(0x2A, test_kompressor.mEncodedData[2])
-        self.assertEqual(7, test_kompressor.mCurrentBitCount)
+        self.assertEqual(2, test_encoder.mEncodedDataCount)
+        self.assertEqual(0, test_encoder.mEncodedData[0])
+        self.assertEqual(1, test_encoder.mEncodedData[1])
+        self.assertEqual(7, test_encoder.mCurrentBitCount)
 
     def test_normalize_stats(self):
         # Purpose: Normalize statistics across several ranges
         # Expectation: The cumulative counts should be correct after each normalization
 
-        test_kompressor = AREncoder(11,256)
-        test_kompressor.mEncodedData = bytearray(1024)
-        test_kompressor.mMaxEncodedDataLen = 1024
+        test_encoder = AREncoder(11,256)
+        test_encoder.mEncodedData = bytearray(1024)
+        test_encoder.mMaxEncodedDataLen = 1024
 
         # Normalize unchanged data, it should remain the same
-        test_kompressor._normalize_stats();
+        test_encoder._normalize_stats();
 
-        self.assertEqual(256, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(256, test_encoder.mTotalSymbolCount)
 
-        self.assertEqual(1, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(2, test_kompressor.mSymbolCumulativeCount[1])
-        self.assertEqual(65, test_kompressor.mSymbolCumulativeCount[64])
-        self.assertEqual(251, test_kompressor.mSymbolCumulativeCount[250])
-        self.assertEqual(256, test_kompressor.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[1])
+        self.assertEqual(65, test_encoder.mSymbolCumulativeCount[64])
+        self.assertEqual(251, test_encoder.mSymbolCumulativeCount[250])
+        self.assertEqual(256, test_encoder.mSymbolCumulativeCount[255])
 
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_kompressor.mSymbolCumulativeCount[i])
+            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
 
         # Normalize changed data, All count should be halved
         for i in range(0,10):
-            test_kompressor._increment_count(0)
+            test_encoder._increment_count(0)
 
         for i in range(0,10):
-            test_kompressor._increment_count(250)
+            test_encoder._increment_count(250)
 
         for i in range(0,10):
-            test_kompressor._increment_count(255)
+            test_encoder._increment_count(255)
 
-        self.assertEqual(286, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(286, test_encoder.mTotalSymbolCount)
 
-        test_kompressor._normalize_stats();
+        test_encoder._normalize_stats();
 
-        self.assertEqual(268, test_kompressor.mTotalSymbolCount)
+        self.assertEqual(268, test_encoder.mTotalSymbolCount)
 
-        self.assertEqual(5, test_kompressor.mSymbolCumulativeCount[0])
-        self.assertEqual(6, test_kompressor.mSymbolCumulativeCount[1])
-        self.assertEqual(69, test_kompressor.mSymbolCumulativeCount[64])
-        self.assertEqual(259, test_kompressor.mSymbolCumulativeCount[250])
-        self.assertEqual(268, test_kompressor.mSymbolCumulativeCount[255])
+        self.assertEqual(5, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(6, test_encoder.mSymbolCumulativeCount[1])
+        self.assertEqual(69, test_encoder.mSymbolCumulativeCount[64])
+        self.assertEqual(259, test_encoder.mSymbolCumulativeCount[250])
+        self.assertEqual(268, test_encoder.mSymbolCumulativeCount[255])
 
 
     def test_encode_data_data_len_invalid(self):
         # Purpose: Pass in a data byte array that is smaller than the specified data length
         # Expectation: An exception should be thrown
 
-        test_kompressor = AREncoder(11,256)
+        test_encoder = AREncoder(11,256)
 
         data = array('i', [0]*10)
         encodedData = bytearray(10)
 
         with self.assertRaises(Exception):
-            test_kompressor.encode(data, 11, encodedData, 10)
+            test_encoder.encode(data, 11, encodedData, 10)
 
     def test_encode_data_compressed_data_len_invalid(self):
         # Purpose: Pass in a data byte array that is smaller than the specified data length
         # Expectation: An exception should be thrown
 
-        test_kompressor = AREncoder(11,256)
+        test_encoder = AREncoder(11,256)
 
         data = array('i', [0]*10)
         encodedData = bytearray(10)
 
         with self.assertRaises(Exception):
-            test_kompressor.encode(data, 10, encodedData, 11)
-"""
+            test_encoder.encode(data, 10, encodedData, 11)
+
     def test_encode_data_small_set(self):
         # Purpose: Encode the data set {0x00, 0x00, 0x01}
         # Expectation: The resulting encode data should be correct
 
-        test_kompressor = AREncoder(11,256)
+        test_encoder = AREncoder(11,256)
 
         data = array('i', [0]*10)
         encodedData = bytearray(10)
@@ -645,20 +644,20 @@ class TestAREncoder(unittest.TestCase):
         data[1] = 0x00
         data[2] = 0x01
 
-        encodedDataSize = test_kompressor.compress_data(data, 3, encodedData, 10)
+        encodedDataSize = test_encoder.encode(data, 3, encodedData, 10)
 
-        self.assertEqual(6, encodedDataSize)
+        self.assertEqual(5, encodedDataSize)
         self.assertEqual(0x00, encodedData[0])
         self.assertEqual(0x00, encodedData[1])
         self.assertEqual(0x05, encodedData[2])
         self.assertEqual(0x80, encodedData[3])
         self.assertEqual(0x00, encodedData[4])
 
-    def test_compress_data_not_enough_space(self):
-        # Purpose: Compress the data set {0x00, 0x00, 0x01} but set the compressed data byte array size to 1 which is not enough to hold the compressed data
+    def test_encode_data_not_enough_space(self):
+        # Purpose: Encode the data set {0x00, 0x00, 0x01} but set the compressed data byte array size to 1 which is not enough to hold the compressed data
         # Expectation: An exception should be raised
 
-        test_kompressor = AREncoder(11)
+        test_encoder = AREncoder(11, 256)
 
         data = bytearray(10)
         encodedData = bytearray(10)
@@ -669,13 +668,13 @@ class TestAREncoder(unittest.TestCase):
         data[2] = 0x01
 
         with self.assertRaises(Exception):
-            test_kompressor.compress_data(data, 3, encodedData, 1)
+            test_encoder.encode(data, 3, encodedData, 1)
 
-    def test_compress_data(self):
+    def test_encoded_data(self):
         # Purpose: Compress several different data sets
-        # Expectation: Ensure that the data gets compressed
+        # Expectation: Ensure that the data gets encoded
 
-        test_kompressor = AREncoder(11)
+        test_encoder = AREncoder(11,256)
 
         test_data = bytearray([0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
                                0x56,0xba,0x71,0xd5,0x1c,0x00,0xa6,0x0e,
@@ -748,34 +747,34 @@ class TestAREncoder(unittest.TestCase):
 
         encodedData = bytearray(1024)
 
-        encodedDataLen1 = test_kompressor.compress_data(test_data, 88, encodedData, 1024)
+        encodedDataLen1 = test_encoder.encode(test_data, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen1)
 
-        test_kompressor._initmembers()
-        encodedDataLen2 = test_kompressor.compress_data(test_data1, 80, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen2 = test_encoder.encode(test_data1, 80, encodedData, 1024)
         self.assertGreater(80, encodedDataLen2)
 
-        test_kompressor._initmembers()
-        encodedDataLen3 = test_kompressor.compress_data(test_data2, 60, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen3 = test_encoder.encode(test_data2, 60, encodedData, 1024)
         self.assertGreater(60, encodedDataLen3)
 
-        test_kompressor._initmembers()
-        encodedDataLen4 = test_kompressor.compress_data(test_data3, 52, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen4 = test_encoder.encode(test_data3, 52, encodedData, 1024)
         self.assertGreater(52, encodedDataLen4)
 
-        test_kompressor._initmembers()
-        encodedDataLen5 = test_kompressor.compress_data(test_data4, 88, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen5 = test_encoder.encode(test_data4, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen5)
 
-        test_kompressor._initmembers()
-        encodedDataLen6 = test_kompressor.compress_data(test_data5, 160, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen6 = test_encoder.encode(test_data5, 160, encodedData, 1024)
         self.assertGreater(160, encodedDataLen6)
 
-    def test_compress_data_12bitword(self):
+    def test_encode_12bitword(self):
         # Purpose: Compress several different data sets using 12 bit word
         # Expectation: Ensure that the data gets compressed
 
-        test_kompressor = AREncoder(12)
+        test_encoder = AREncoder(12, 256)
 
         test_data = bytearray([0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
                                0x56,0xba,0x71,0xd5,0x1c,0x00,0xa6,0x0e,
@@ -848,34 +847,34 @@ class TestAREncoder(unittest.TestCase):
 
         encodedData = bytearray(1024)
 
-        encodedDataLen1 = test_kompressor.compress_data(test_data, 88, encodedData, 1024)
+        encodedDataLen1 = test_encoder.encode(test_data, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen1)
 
-        test_kompressor._initmembers()
-        encodedDataLen2 = test_kompressor.compress_data(test_data1, 80, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen2 = test_encoder.encode(test_data1, 80, encodedData, 1024)
         self.assertGreater(80, encodedDataLen2)
 
-        test_kompressor._initmembers()
-        encodedDataLen3 = test_kompressor.compress_data(test_data2, 60, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen3 = test_encoder.encode(test_data2, 60, encodedData, 1024)
         self.assertGreater(60, encodedDataLen3)
 
-        test_kompressor._initmembers()
-        encodedDataLen4 = test_kompressor.compress_data(test_data3, 52, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen4 = test_encoder.encode(test_data3, 52, encodedData, 1024)
         self.assertGreater(52, encodedDataLen4)
 
-        test_kompressor._initmembers()
-        encodedDataLen5 = test_kompressor.compress_data(test_data4, 88, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen5 = test_encoder.encode(test_data4, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen5)
 
-        test_kompressor._initmembers()
-        encodedDataLen6 = test_kompressor.compress_data(test_data5, 160, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen6 = test_encoder.encode(test_data5, 160, encodedData, 1024)
         self.assertGreater(160, encodedDataLen6)
 
-    def test_compress_data_16bitword(self):
+    def test_encode_16bitword(self):
         # Purpose: Compress several different data sets using 12 bit word
         # Expectation: Ensure that the data gets compressed
 
-        test_kompressor = AREncoder(16)
+        test_encoder = AREncoder(16,256)
 
         test_data = bytearray([0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
                                0x56,0xba,0x71,0xd5,0x1c,0x00,0xa6,0x0e,
@@ -948,30 +947,29 @@ class TestAREncoder(unittest.TestCase):
 
         encodedData = bytearray(1024)
 
-        encodedDataLen1 = test_kompressor.compress_data(test_data, 88, encodedData, 1024)
+        encodedDataLen1 = test_encoder.encode(test_data, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen1)
 
-        test_kompressor._initmembers()
-        encodedDataLen2 = test_kompressor.compress_data(test_data1, 80, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen2 = test_encoder.encode(test_data1, 80, encodedData, 1024)
         self.assertGreater(80, encodedDataLen2)
 
-        test_kompressor._initmembers()
-        encodedDataLen3 = test_kompressor.compress_data(test_data2, 60, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen3 = test_encoder.encode(test_data2, 60, encodedData, 1024)
         self.assertGreater(60, encodedDataLen3)
 
-        test_kompressor._initmembers()
-        encodedDataLen4 = test_kompressor.compress_data(test_data3, 52, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen4 = test_encoder.encode(test_data3, 52, encodedData, 1024)
         self.assertGreater(52, encodedDataLen4)
 
-        test_kompressor._initmembers()
-        encodedDataLen5 = test_kompressor.compress_data(test_data4, 88, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen5 = test_encoder.encode(test_data4, 88, encodedData, 1024)
         self.assertGreater(88, encodedDataLen5)
 
-        test_kompressor._initmembers()
-        encodedDataLen6 = test_kompressor.compress_data(test_data5, 160, encodedData, 1024)
+        test_encoder.reset()
+        encodedDataLen6 = test_encoder.encode(test_data5, 160, encodedData, 1024)
         self.assertGreater(160, encodedDataLen6)
-"""
 
-if __name__ == '_main__':
+if __name__ == '__main__':
     unittest.main()
 
