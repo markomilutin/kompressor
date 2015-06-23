@@ -63,3 +63,6 @@ class Dekompressor:
         self.mContinuousModeEnabled = False
         self.mContinuousModeTotalData = 0
         self.mContinuousModeDataCompressed = 0
+
+    def _expandRunsSpecific(self, symbolToExpand, runLengthSymbolStart_, maxRunLength_, dataSection, dataSize_):
+        pass
