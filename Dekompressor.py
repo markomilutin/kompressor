@@ -62,7 +62,18 @@ class Dekompressor:
 
         self.mContinuousModeEnabled = False
         self.mContinuousModeTotalData = 0
-        self.mContinuousModeDataCompressed = 0
+        self.mContinuousModeDataDecompressed = 0
 
-    def _expandRunsSpecific(self, symbolToExpand, runLengthSymbolStart_, maxRunLength_, dataSection, dataSize_):
+    def _expandRunsSpecific(self, symbolToExpand, runLengthSymbolStart_, maxRunLength_, incomingData_ , incomingDataSize_, expandedData_, expandedDataMaxSize_):
+        """
+        Expand runs of symbol passed in based on extended symbols starting at runLengthSymbolStart_ and increases by
+        upto maxRunLength. The data will be expanded
+
+        :param symbolToExpand:
+        :param runLengthSymbolStart_:
+        :param maxRunLength_:
+        :param dataSection:
+        :param dataSize_:
+        :return:
+        """
         pass

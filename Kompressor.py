@@ -68,9 +68,8 @@ class Kompressor:
 
     def _replaceRunsSpecific(self, symbolToReplace_, runLengthSymbolStart_, maxRunLength_, dataSection_, dataSize_):
         """
-        Remove runs of symbol passed in using extended symbols that start at runLengthSymbolStart_. Run length is defined
-        by maxRunLength_. The data will be stored in place in dataSection_ array provided array. The new length of dataSection
-        will be returned
+        Remove runs of symbol passed in using extended symbols that start at runLengthSymbolStart_. The data will be
+        stored in place in dataSection_ array provided array. The new length of dataSection will be returned
 
         :param symbolToReplace_: The symbol whose runs we are replacing
         :param runLengthSymbolStart_: The start symbol of symbols used to replace runs of data. First symbol indicates run of two
