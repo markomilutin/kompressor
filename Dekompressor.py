@@ -83,6 +83,7 @@ class Dekompressor:
         currentExpandedDataIndex = 0
         currentSymbol = 0xFFFF
 
+        # Go through all the incoming data
         while(currentIncomingDataIndex < incomingDataSize_):
 
             currentSymbol = incomingData_[currentIncomingDataIndex]
@@ -99,13 +100,16 @@ class Dekompressor:
                 # The run length is based on the current extended symbol. Find the offset from the base extended symbol and add 2 to reflect that the base represents a run of two
                 runLength = currentSymbol - runLengthSymbolStart_ + 2
 
+                # If there is not enough room to to store the expanded data throw exception
                 if((currentExpandedDataIndex + runLength) >= expandedDataMaxSize_):
                     raise Exception('Not enough space in expansion array 1')
 
+                # Insert the run into the expanded data
                 for i in range(0, runLength):
                     expandedData_[currentExpandedDataIndex] = symbolToExpand
                     currentExpandedDataIndex += 1
             else:
+                # If there is not enough data to store the next symbol throw exception
                 if((currentExpandedDataIndex + 1) >= expandedDataMaxSize_):
                     raise Exception('Not enough space in expansion array 2')
 
@@ -115,5 +119,104 @@ class Dekompressor:
         return currentExpandedDataIndex
 
 
+    def _expandRunsGeneric(self, runLengthSymbolStart_, maxRunLength_, incomingData_, incomingDataSize_, expandedData_, expandedDataMaxSize_):
+        """
+        Expand extended symbols that indicate runs of generic symbols.
+
+        :param runLengthSymbolStart_: First extended symbol that is used to indicate how many times the original symbol is repeated. First symbol indicates a repeat of one
+        :param maxRunLength_: The max size of a run that can be replaced
+        :param incomingData_: The data that needs to be expanded (integer array)
+        :param incomingDataSize_: The size of the incoming array
+        :param expandedData_: The expanded data will be stored here (integer array)
+        :param maxExpandedDataSize: The max number of symbols that the expanded data can be. An exception will be thrown if exceeded
+        :return: The number of symbols stored in expandedData_
+        """
+
+        currentIncomingDataIndex = 0
+        currentExpandedDataIndex = 0
+        currentSymbol = 0xFFFF
+        previousSymbol = 0xFFFF
+
+        if(incomingDataSize_ == 0 ):
+            return 0
+
+        currentSymbol = incomingData_[currentIncomingDataIndex]
+        currentIncomingDataIndex += 1
+
+        # The first symbol must be a number between 0-255
+        if(currentSymbol > 255):
+            raise Exception('Invalid first symbol')
+
+        # Store the first symbol
+        expandedData_[currentExpandedDataIndex] = currentSymbol
+        currentExpandedDataIndex += 1
+        previousSymbol = currentSymbol
+
+        # Go through all the incoming data
+        while(currentIncomingDataIndex < incomingDataSize_):
+
+            currentSymbol = incomingData_[currentIncomingDataIndex]
+            currentIncomingDataIndex += 1
+
+            # Ensure symbol is in allowed range. Must be between 0-256 or (runLengthSymbolStart_) to (runLengthSymbolStart_ + (maxRunLength - 2))
+            if(((currentSymbol > 255) and (currentSymbol < runLengthSymbolStart_)) or
+               (currentSymbol > (runLengthSymbolStart_ + maxRunLength_))):
+                raise Exception('Symbol [' + str(currentSymbol) + '] out of range')
+
+            # If byte value copy else if this is an extended symbol then expand out the previous symbol provided. Note the first extended symbol represents a run of 1 so need to offset by one
+            if(currentSymbol >= runLengthSymbolStart_):
+
+                # The run length is based on the current extended symbol. Find the offset from the base extended symbol and add 1 to reflect that the base represents a run of one
+                runLength = currentSymbol - runLengthSymbolStart_ + 1
+
+                # If there is not enough room to to store the expanded data throw exception
+                if((currentExpandedDataIndex + runLength) >= expandedDataMaxSize_):
+                    raise Exception('Not enough space in expansion array 1')
+
+                for i in range(0, runLength):
+                    expandedData_[currentExpandedDataIndex] = previousSymbol
+                    currentExpandedDataIndex += 1
+            else:
+                # If there is not enough room to to store the symbol throw exception
+                if((currentExpandedDataIndex + 1) >= expandedDataMaxSize_):
+                    raise Exception('Not enough space in expansion array 2')
+
+                expandedData_[currentExpandedDataIndex] = currentSymbol
+                currentExpandedDataIndex +=1
+
+                # Only update the previous symbol on a non extended character, as multiple extended symbols could be representing a long run of a symbol
+                previousSymbol = currentSymbol
+
+        return currentExpandedDataIndex
+
+    def _reverseBWTransform(self, incomingData_, incomingDataSize_, restoredData_, restoredDataMaxLen_):
+        """
+        Reverse BW transform on incomingData_. This will revert the data to it's pre transform state.
+        The reversed data will be stored in restoredData_
+
+        :param incomingData_: The data to be reverted which is an array
+        :param incomingDataSize_: The length of the data to be reverted
+        :param restoredData_: The reversed data will be stored here. This is an array
+        :param restoredDataMaxLen_: The max length of restoredData_
+        :return: The size of the reverted data
+        """
+
+        # From the incoming data get the index of the original data sequence
+        originalIndex = 0
+
+        # Convert from little endian to number
+        for i in range(0, self.mBWTransformStoreBytes):
+            originalIndex |= ((incomingData_[i] & 0xFF) << (i*8))
+
+        sortedData = array('i', sorted(incomingData_[self.mBWTransformStoreBytes:]))
+
+        currentSymbol = 0xFFFF
+        currentIndex =
+        numSymbolsToRevert = incomingDataSize_ - self.mBWTransformStoreBytes
+
+        while(numSymbolsToRevert > 0):
+            #
+
+        return (incomingDataSize_ - self.mBWTransformStoreBytes)
 
 
