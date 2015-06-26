@@ -231,7 +231,7 @@ class Kompressor:
         stack = [(0, dataSize_)]
 
         # Start with permutations of original data ordered 0 to dataSize_. This will be sorted according the contents of the permutations
-        indecesOfDataPermutations = bytearray(dataSize_)
+        indecesOfDataPermutations = array('i', [0]*dataSize_)
 
         # Set the indeces based on permutation
         for i in range(0, dataSize_):
@@ -273,7 +273,7 @@ class Kompressor:
                 stack.append((storeIndex + 1, bounds[1]))
 
         #Find the original data sequence in the sorted indecesOfDataPermutations
-        originalSequenceIndex = indecesOfDataPermutations.find(0)
+        originalSequenceIndex = indecesOfDataPermutations.index(0)
 
         # Add the original sequence index at the front of the transform (split into bytes, little endian)
         for i in range(0, self.mBWTransformStoreBytes):
@@ -289,12 +289,17 @@ class Kompressor:
         Pass in integer array of data that needs to be compressed. The compressed data will
         be stored in the outputData_ bytearray.
 
-        :param inputData_: Array that holds the data that needs to be compressed
+        :param inputData_: bytearray that holds the data that needs to be compressed. Data will be modified during compression sequence
         :param inputDataLen_: The data size must be less than or equal to self.mSectionSize
         :param outputData_: Byte array that will hold the compressed binary data
         :param maxOutputLen_: The maximum size of the outputData_ array. If this is not enough to store compressed data an exception will be thrown
         :return: Return the size of the compressed data in outputData_
         """
+
+        lengthAfterSymbol1Replacement = 0
+        lengthAfterSymbol2Replacement = 0
+        lengthAfterBWTransform = 0
+        lengthAfterGenericReplacement = 0
 
         # If data exceeds section size throw exception
         if(inputDataLen_ > self.mSectionSize):
@@ -302,23 +307,23 @@ class Kompressor:
 
         # Perform first character replacement if possible
         if(self.mSpecialSymbol1MaxRun > 1):
-            inputDataLen_ = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
+            lengthAfterSymbol1Replacement = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
 
         # Transform data using BW transform
-        transformedDataLen = self._performBWTransform(inputData_, inputDataLen_, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
+        lengthAfterBWTransform = self._performBWTransform(inputData_, lengthAfterSymbol1Replacement, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
 
         # Perform second character replacement if possible
         if(self.mSpecialSymbol2MaxRun > 1):
-            transformedDataLen = self._replaceRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mSectionTransformData, transformedDataLen)
+            lengthAfterSymbol2Replacement = self._replaceRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mSectionTransformData, lengthAfterBWTransform)
 
         # Perform generic symbol run replacement
-        transformedDataLen = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, transformedDataLen)
+        lengthAfterGenericReplacement = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, lengthAfterSymbol2Replacement)
 
         # Encode the data
-        self.mSectionTransformData[transformedDataLen] = self.TERMINATION_SYMBOL
-        transformedDataLen += 1
+        self.mSectionTransformData[lengthAfterGenericReplacement] = self.TERMINATION_SYMBOL
+        lengthAfterGenericReplacement += 1
 
-        return self.mEncoder.encode(self.mSectionTransformData, transformedDataLen, outputData_, maxOutputLen_)
+        return self.mEncoder.encode(self.mSectionTransformData, lengthAfterGenericReplacement, outputData_, maxOutputLen_)
 
     def kompressStartContinuous(self, totalDataToCompress_):
         """

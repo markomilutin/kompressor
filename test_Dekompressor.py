@@ -4,7 +4,9 @@ import unittest
 from array import array
 
 from Dekompressor import Dekompressor
+from SimpleEncoder import SimpleEncoder
 from SimpleDecoder import SimpleDecoder
+from Kompressor import Kompressor
 
 class KompressorTests(unittest.TestCase):
     def test_constructor(self):
@@ -137,13 +139,13 @@ class KompressorTests(unittest.TestCase):
 
     def test_expandRunsSpecific_symbol_below_expansion_range(self):
         """
-        Purpose: Pass in data that has an extended symbol that is greater than 255 but less than expansion symbol range
+        Purpose: Pass in data that has an extended symbol that is greater than max allowed
         Expectation: An exception should be thrown
         """
 
         dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
 
-        compressedData = array('i', [256, 2, 0, 4, 260])
+        compressedData = array('i', [256, 2, 0, 4, 300])
         expandedData = array('i', [0]*32)
 
         with self.assertRaises(Exception):
@@ -151,13 +153,13 @@ class KompressorTests(unittest.TestCase):
 
     def test_expandRunsSpecific_symbol_above_expansion_range(self):
         """
-        Purpose: Pass in data that has an extended symbol that is greater than expansion symbol range
+        Purpose: Pass in data that has an extended symbol that is greater than allowed range
         Expectation: An exception should be thrown
         """
 
         dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
 
-        compressedData = array('i', [256, 2, 0, 4, 264])
+        compressedData = array('i', [256, 2, 0, 4, 350])
         expandedData = array('i', [0]*32)
 
         with self.assertRaises(Exception):
@@ -362,19 +364,336 @@ class KompressorTests(unittest.TestCase):
         with self.assertRaises(Exception):
             expandedCount = dekompressor._expandRunsGeneric(257, 3, compressedData, 5, expandedData, 5)
 
-    def test_reverseBWTransformBasic(self):
+    def test_reverseBWTransform_invalidData(self):
         """
-        Purpose:
-        Expectation:
+        Purpose: Pass in data that is too small
+        Expectation: An exception should be thrown
         """
 
         dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
 
-        preTransformData = array('i', [1, 257, 2, 0, 4, 2])
-        restoredData = array('i', [0]*32)
+        transforedData = array('i', [0])
+        restoredData = array('i', [3])
 
-        restoreDataLen = dekompressor._reverseBWTransform(preTransformData, 6, restoredData, 32)
+        with self.assertRaises(Exception):
+            dekompressor._reverseBWTransform(transforedData, 1, restoredData, 3)
 
+    def test_reverseBWTransformBasic(self):
+        """
+        Purpose: Run a small input data set and ensure that it can be reversed
+        Expectation: The reversed data should match the original data
+        """
+
+        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i', [1, 257, 2, 0, 4, 2, 5, 5, 5, 3, 4, 1, 2, 9, 0, 2, 1, 257]) # 18 bytes
+        transforedData = array('i', [0]*19)
+        restoredData = array('i', [0]*18)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 18, transforedData, 19)
+        self.assertEqual(19, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 19, restoredData, 18)
+        self.assertEqual(18, restoreDataLen)
+
+        for i in range(0, 18):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_reverseBWTransform_Seq1(self):
+        """
+        Purpose: Test out a binary sequence
+        Expectation: Data should come out the same as the original after reversal
+        """
+
+        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i',
+                                 [0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
+                                 0x56,0xba,0x71,0xd5,0x1c,0x00,0xa6,0x0e,
+                                 0xb4,0x5e,0x4a,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x97,0x06,0xcb,0x00,0x00,0x00,0x68,0x11,
+                                 0xb4,0x5e,0x4a,0x0e,0xe2,0x77,0xbf,0x1e,
+                                 0xfa,0x3b,0x8d,0xbd,0x55,0x00,0xcb,0x03,
+                                 0xc0,0xa7,0xb0,0xec,0x1c,0x00,0xa6,0x01,
+                                 0x93,0x5e,0x4a,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x0a,0x07,0x8b,0x00,0x00,0x00,0x65,0x11,
+                                 0x8c,0x5e,0x4a,0x0e,0xc6,0x7a,0xbe,0x1e,
+                                 0x03,0x3a,0x8d,0xbd,0x0e,0x00,0x8b,0x07]) #88
+        transforedData = array('i', [0]*89)
+        restoredData = array('i', [0]*88)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 88, transforedData, 89)
+        self.assertEqual(89, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 89, restoredData, 88)
+        self.assertEqual(88, restoreDataLen)
+
+        for i in range(0, 88):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_reverseBWTransform_Seq2(self):
+        """
+        Purpose: Test a second sequence
+        Expectation: Data should come out the same after reverse
+        """
+
+        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i',
+                                 [0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03,
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03]) #160
+
+        transforedData = array('i', [0]*161)
+        restoredData = array('i', [0]*160)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 160, transforedData, 161)
+        self.assertEqual(161, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 161, restoredData, 160)
+        self.assertEqual(160, restoreDataLen)
+
+        for i in range(0, 160):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_reverseBWTransform_Seq2_LargerDataSection(self):
+        """
+        Purpose: Test with sequence 2 but use a larger section size which will increase number of symbols used for transfor info to 2
+        Expectation: Data should come out the same after reverse
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i',
+                                 [0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03,
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03]) #160
+
+        transforedData = array('i', [0]*162)
+        restoredData = array('i', [0]*160)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 160, transforedData, 162)
+        self.assertEqual(162, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 162, restoredData, 160)
+        self.assertEqual(160, restoreDataLen)
+
+        for i in range(0, 160):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_reverseBWTransform_Seq3_LargerDataSection(self):
+        """
+        Purpose: Test with sequence 2 but use a larger section size which will increase number of symbols used for transfor info to 2
+        Expectation: Data should come out the same after reverse
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i',
+                                 [
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03,
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03,
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03,
+                                 0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
+                                 0x8c,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x07,0x04,0xbc,0x00,0x00,0x00,0x92,0x11,
+                                 0x8b,0x18,0x49,0x0e,0xfd,0x41,0x7b,0x1f,
+                                 0xb4,0xb9,0x95,0xbb,0x00,0xf8,0xbc,0x02,
+                                 0x86,0xaa,0xb0,0xec,0x1c,0x00,0xa6,0x0b,
+                                 0x81,0x18,0x49,0x0e,0xf5,0x01,0x00,0x00,
+                                 0x03,0x06,0x8b,0x00,0x00,0x00,0x8f,0x11,
+                                 0x7a,0x18,0x49,0x0e,0x59,0x40,0x7b,0x1f,
+                                 0x60,0xbe,0x95,0xbb,0x00,0x74,0x8b,0x03
+                                 ]) #320
+
+        transforedData = array('i', [0]*322)
+        restoredData = array('i', [0]*320)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 320, transforedData, 322)
+        self.assertEqual(322, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 322, restoredData, 320)
+        self.assertEqual(320, restoreDataLen)
+
+        for i in range(0, 320):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_reverseBWTransform_Seq4_LargerDataSection(self):
+        """
+        Purpose: Test with sequence 2 but use a larger section size which will increase number of symbols used for transfor info to 2
+        Expectation: Data should come out the same after reverse
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+
+        preTransformData = array('i', [1, 2, 258, 255, 255, 257, 3, 255, 3, 45, 255, 55, 55, 66, 99, 255, 255, 1, 2, 255, 0, 33, 255, 33, 33, 33, 33, 99, 255, 255, 255, 255, 255, 255])
+
+        transforedData = array('i', [0]*36)
+        restoredData = array('i', [0]*34)
+
+        transformedLen = kompressor._performBWTransform(preTransformData, 34, transforedData, 36)
+        self.assertEqual(36, transformedLen)
+
+        restoreDataLen = dekompressor._reverseBWTransform(transforedData, 36, restoredData, 34)
+        self.assertEqual(34, restoreDataLen)
+
+        for i in range(0, 34):
+            self.assertEqual(preTransformData[i], restoredData[i])
+
+    def test_dekompressor_small_seq_allspecialsymbols(self):
+        """
+        Purpose: Kompressor and Dekompressor using a small data set and all special symbols
+        Expectation: After undergoing compression and decompression the end data should be the same as the original
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+
+        inputData = array('i', [1,2,0,0,0,0xFF,0,0,3,3,45,55,55,66,99,1,2,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #28
+        inputDataToSend = array('i', [1,2,0,0,0,0xFF,0,0,3,3,45,55,55,66,99,1,2,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #28
+        compressedData = bytearray(1024)
+        testEncoder = SimpleEncoder(kompressor.mVocabularySize)
+        kompressor.mEncoder = testEncoder
+
+        self.assertEqual(28, len(inputDataToSend))
+        compressedDataLen = kompressor.kompress(inputDataToSend, 28, compressedData, 1024)
+
+        testDecoder = SimpleDecoder(testEncoder.mEncodedData, len(testEncoder.mEncodedData))
+        dekompressor.mDecoder = testDecoder
+
+        uncompressedData = bytearray(1024)
+        uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
+
+        self.assertEqual(28, uncompressedDataLen)
+
+        for i in range(0, 28):
+            self.assertEqual(inputData[i], uncompressedData[i])
+
+    def test_dekompressor_small_seq_2_allspecialsymbols(self):
+        """
+        Purpose: Kompressor and Dekompressor using a small data set and all special symbols
+        Expectation: After undergoing compression and decompression the end data should be the same as the original
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+
+        inputData = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
+        inputDataToSend = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
+        compressedData = bytearray(1024)
+        testEncoder = SimpleEncoder(kompressor.mVocabularySize)
+        kompressor.mEncoder = testEncoder
+
+        self.assertEqual(34, len(inputDataToSend))
+        compressedDataLen = kompressor.kompress(inputDataToSend, 34, compressedData, 1024)
+
+        testDecoder = SimpleDecoder(testEncoder.mEncodedData, len(testEncoder.mEncodedData))
+        dekompressor.mDecoder = testDecoder
+
+        uncompressedData = bytearray(1024)
+        uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
+
+        self.assertEqual(34, uncompressedDataLen)
+
+        for i in range(0, 34):
+            self.assertEqual(inputData[i], uncompressedData[i])
+
+    def test_dekompressor_small_seq_only_specialsymbol1(self):
+        """
+        Purpose: Kompressor and Dekompressor using a small data set and only special symbol 1
+        Expectation: After undergoing compression and decompression the end data should be the same as the original
+        """
+
+        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 0, 10)
+        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 0, 10)
+
+        inputData = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
+        inputDataToSend = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
+
+        compressedData = bytearray(1024)
+        testEncoder = SimpleEncoder(kompressor.mVocabularySize)
+        kompressor.mEncoder = testEncoder
+
+        self.assertEqual(34, len(inputDataToSend))
+        compressedDataLen = kompressor.kompress(inputDataToSend, 34, compressedData, 1024)
+
+        testDecoder = SimpleDecoder(testEncoder.mEncodedData, len(testEncoder.mEncodedData))
+        dekompressor.mDecoder = testDecoder
+
+        uncompressedData = bytearray(1024)
+        uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
+
+        self.assertEqual(34, uncompressedDataLen)
+
+        for i in range(0, 34):
+            self.assertEqual(inputData[i], uncompressedData[i])
 
 if __name__ == '__main__':
     unittest.main()

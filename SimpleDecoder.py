@@ -18,7 +18,7 @@ class SimpleDecoder:
         """
 
         self.mDecodedData = decodedData_
-        self.mDecodedDataLen = decodedDataLen_
+        self.mDecodedDataLen = decodedDataLen_ - 1 # Remove the termination symbol
 
     def decode(self, encodedData_, dataLen_, decodedData_, maxDecodedDataLen_):
         """
@@ -43,9 +43,9 @@ class SimpleDecoder:
         if(self.mDecodedDataLen > maxDecodedDataLen_):
             raise Exception("Not enough space to store decoded data")
 
-        # Copy all the stored data as outgoing data
+        # Copy all the stored data as outgoing data expect that last symbol which is the termination symbol
         for i in range(0, self.mDecodedDataLen):
-            decodedData_[i] = self.mDecodedData
+            decodedData_[i] = self.mDecodedData[i]
 
         return self.mDecodedDataLen
 

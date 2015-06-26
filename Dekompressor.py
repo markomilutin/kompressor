@@ -60,6 +60,10 @@ class Dekompressor:
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
         self.mDecoder = ARDecoder(32, self.mVocabularySize, self.TERMINATION_SYMBOL)
 
+        self.mWorkingArrayMaxSize = self.mSectionSize + self.mBWTransformStoreBytes
+        self.mWorkingArray1 = array('i', [0]*(self.mWorkingArrayMaxSize))
+        self.mWorkingArray2 = array('i', [0]*(self.mWorkingArrayMaxSize))
+
         self.mContinuousModeEnabled = False
         self.mContinuousModeTotalData = 0
         self.mContinuousModeDataDecompressed = 0
@@ -89,9 +93,8 @@ class Dekompressor:
             currentSymbol = incomingData_[currentIncomingDataIndex]
             currentIncomingDataIndex += 1
 
-            # Ensure symbol is in allowed range. Must be between 0-256 or (runLengthSymbolStart_) to (runLengthSymbolStart_ + (maxRunLength - 2))
-            if(((currentSymbol > 255) and (currentSymbol < runLengthSymbolStart_)) or
-               (currentSymbol > (runLengthSymbolStart_ + maxRunLength_))):
+            # Ensure symbol is in allowed range, must be less than max vocabulary size
+            if(currentSymbol > self.mVocabularySize):
                 raise Exception('Symbol [' + str(currentSymbol) + '] out of range')
 
             # If binary value copy else if this is an extended symbol then expand out the symbol provided. Note the first extended symbol represents a run of two so need to offset by two
@@ -158,9 +161,8 @@ class Dekompressor:
             currentSymbol = incomingData_[currentIncomingDataIndex]
             currentIncomingDataIndex += 1
 
-            # Ensure symbol is in allowed range. Must be between 0-256 or (runLengthSymbolStart_) to (runLengthSymbolStart_ + (maxRunLength - 2))
-            if(((currentSymbol > 255) and (currentSymbol < runLengthSymbolStart_)) or
-               (currentSymbol > (runLengthSymbolStart_ + maxRunLength_))):
+            # Ensure symbol is in allowed range. Must be less than max vocabulary size
+            if(currentSymbol > self.mVocabularySize):
                 raise Exception('Symbol [' + str(currentSymbol) + '] out of range')
 
             # If byte value copy else if this is an extended symbol then expand out the previous symbol provided. Note the first extended symbol represents a run of 1 so need to offset by one
@@ -201,6 +203,12 @@ class Dekompressor:
         :return: The size of the reverted data
         """
 
+        # Incoming data must be bigger than the transform information
+        if(incomingDataSize_ <= self.mBWTransformStoreBytes):
+            raise Exception('Not enough data')
+
+        restoredDataIndex = 0
+
         # From the incoming data get the index of the original data sequence
         originalIndex = 0
 
@@ -208,15 +216,110 @@ class Dekompressor:
         for i in range(0, self.mBWTransformStoreBytes):
             originalIndex |= ((incomingData_[i] & 0xFF) << (i*8))
 
-        sortedData = array('i', sorted(incomingData_[self.mBWTransformStoreBytes:]))
+        sortedData = array('i', sorted(incomingData_[self.mBWTransformStoreBytes:incomingDataSize_]))
 
         currentSymbol = 0xFFFF
-        currentIndex =
-        numSymbolsToRevert = incomingDataSize_ - self.mBWTransformStoreBytes
+        currentIndex = originalIndex
 
+        # Set the number of required symbols to exclude the transform data
+        numSymbolsToRevert = incomingDataSize_ - self.mBWTransformStoreBytes
+        currentSymbol = sortedData[currentIndex]
+        restoredData_[restoredDataIndex] = currentSymbol
+        restoredDataIndex += 1
+        numSymbolsToRevert -= 1
+
+        # Go through all the data
         while(numSymbolsToRevert > 0):
-            #
+
+            symbolCount = 1
+
+            # Go through the sorted data and determine how many copies of the symbol appear beforehand
+            for i in range(0,currentIndex):
+                # If it's the same symbol increment count
+                if(sortedData[i] == currentSymbol):
+                    symbolCount += 1
+
+            # Find the corresponding symbol in the transformed string, must be the at the same count as the symbol in the sorted array. Skip the indices with transform info which is not part of the original data
+            currentIndex = self.mBWTransformStoreBytes
+
+            # Go through the original sequence and find the matching symbol index which will be our next index in the sorted array
+            while((currentIndex < incomingDataSize_) and (symbolCount > 0)):
+
+                # If the current symbol has been found decrease the symbol count
+                if(incomingData_[currentIndex] == currentSymbol):
+                    symbolCount -= 1
+
+                # If have not reached the symbol we want increment the index
+                if(symbolCount != 0):
+                    currentIndex += 1
+
+            # We should always find the the symbols we are looking for
+            if((currentIndex >= incomingDataSize_) or (symbolCount < 0)):
+                raise Exception('Corrupted data')
+
+            # Need to adjust as the transformed data contains extra transform info
+            currentIndex -= self.mBWTransformStoreBytes
+
+            # Get the current symbol and store it
+            currentSymbol = sortedData[currentIndex]
+            restoredData_[restoredDataIndex] = currentSymbol
+            restoredDataIndex += 1
+            numSymbolsToRevert -= 1
 
         return (incomingDataSize_ - self.mBWTransformStoreBytes)
 
+    def dekompress(self, compressedData_, compressedDataLen_, outputData_, maxOutputDataLen_):
+        """
+        Pass in a byte array of data that has been compressed using Kompressor initialized with
+        matching parameters. The uncompressed data will be stored in the outputData_ bytearray
+        and the amount of data uncompressed will be returned.
 
+        The max size that the compressedData can uncompress is limited by the data section size self.mSectionSize
+
+        :param compressedData_: Compressed that needs to be uncompressed. Data must be passed in a bytearray
+        :param compressedDataLen_: The size of compressed data
+        :param outputData_: Uncompressed data will be stored here, this must  be a bytearray
+        :param maxOutputDataLen_:  The max size of outputData_. If there is not enough room to store all the data an exception will be thrown
+        :return: Number of bytes stored in outputData_
+        """
+
+        decodedDataLen_ = 0
+        lengthAfterGenericExpansion = 0
+        lengthAfterSymbol1Expansion = 0
+        lengthAfterSymbol2Expansion = 0
+
+        # Decode the data first
+        decodedDataLen_ = self.mDecoder.decode(compressedData_, compressedDataLen_,self.mWorkingArray1, self.mWorkingArrayMaxSize)
+
+        # Perform generic symbol run expansion
+        lengthAfterGenericExpansion = self._expandRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mWorkingArray1, decodedDataLen_, self.mWorkingArray2, self.mWorkingArrayMaxSize)
+
+        # Perform second character replacement if possible
+        if(self.mSpecialSymbol2MaxRun > 1):
+            lengthAfterSymbol2Expansion = self._expandRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mWorkingArray2, lengthAfterGenericExpansion, self.mWorkingArray1, self.mWorkingArrayMaxSize)
+
+        transform
+        # Reverse the BW transform
+        lengthAfterBWReverse = self._reverseBWTransform(self.mWorkingArray1, lengthAfterSymbol2Expansion, self.mWorkingArray2, self.mWorkingArrayMaxSize)
+
+        # Perform first character expansion if possible
+        if(self.mSpecialSymbol1MaxRun > 1):
+            lengthAfterSymbol1Expansion = self._expandRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, self.mWorkingArray2, lengthAfterBWReverse, self.mWorkingArray1, self.mWorkingArrayMaxSize)
+
+        # If data exceeds section size throw exception
+        if(lengthAfterSymbol1Expansion > self.mSectionSize):
+            raise Exception('Data length exceeds max section size')
+
+        # Ensure we have enough room to store all data
+        if(lengthAfterSymbol1Expansion > maxOutputDataLen_):
+            raise Exception('Not enough space to store uncompressed data')
+
+        # Copy the data to the byte array, all data should be between 0-255
+        for i in range(0, lengthAfterSymbol1Expansion):
+
+            if(self.mWorkingArray1[i] > 255):
+                raise Exception('Invalid symbol, not in byte range')
+
+            outputData_[i] = self.mWorkingArray1[i]
+
+        return lengthAfterSymbol1Expansion
