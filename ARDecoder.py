@@ -57,17 +57,14 @@ class ARDecoder:
         self.mCurrentEncodedDataByteIndex = 0                                   # Index of the encoded data with are currently working with
         self.mCurrentEncodedDataBit = 0                                         # The current bit of the current byte we are using from the encoded data bytearray
         self.mTotalSymbolCount = self.mVocabularySize                           # The total number of symbols encountered
+
         self.mLowerTag = 0                                                      # The lower tag threshold
-        self.mUpperTag = 0                                                      # The upper tag threshold
+        self.mUpperTag = self.mWordBitMask                                      # The upper tag threshold
         self.mCurrentTag = 0                                                    # The current tag we are processing
 
         # We are initializing with an assumption of a value of 1 for the count of each symbol. The initial cumulative count data will just be an incrementing series up to vocabulary size
         for i in range(0,self.mVocabularySize):
             self.mSymbolCumulativeCount[i] = (i + 1)
-
-        self.mLowerTag = 0                                                      # The lower tag threshold
-        self.mUpperTag = self.mWordBitMask                                      # The upper tag threshold
-        self.mCurrentTag = 0                                                    # The current tag we are processing
 
     def _get_next_bit(self):
         """
@@ -215,6 +212,7 @@ class ARDecoder:
         :param encodedDataLen_: The length of data that needs to be decoded
         :param decodedData_: The decoded data (integer array)
         :param maxDecodedDatalen_ : The max number of symbols that can be stored in decodedData_ array
+        :param firstDataBlock: If this is True then mCurrentTag must be loaded
         :return: Returns the number of symbols stored in decodedData_
         """
 
@@ -230,6 +228,9 @@ class ARDecoder:
         self.mEncodedDataCount = encodedDataLen_
         self.mDecodedData = decodedData_
         self.mDecodedDataLen = 0
+        self.mCurrentEncodedDataByteIndex = 0
+        self.mCurrentEncodedDataBit = 0
+        self.mCurrentTag = 0
 
         # Load the first word size bits into the current tag
         for i in range(0, self.mWordSize):
@@ -259,8 +260,10 @@ class ARDecoder:
                 if(self.mDecodedDataLen >= maxDecodedDataLen_):
                     raise Exception('Not enough space to store decoded data')
 
-                self._update_range_tags(currentSymbol)
-                self._rescale()
+            self._update_range_tags(currentSymbol)
+            self._rescale()
+
+
 
         return self.mDecodedDataLen
 

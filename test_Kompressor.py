@@ -854,6 +854,51 @@ class KompressorTests(unittest.TestCase):
         self.assertEqual(0x04, simpleEncoder.mEncodedData[7])
         self.assertEqual(256, simpleEncoder.mEncodedData[8])
 
+    def test_kompress_small_data_set_onlyspecial_symbol1(self):
+        # Purpose: Compress a small data set with special symbols 1 only
+        # Expectation: The encoded data should match what is expected
+
+        data = array('i',[0x01, 0x01, 0x02, 0x03, 0x03])
+        outData = bytearray(256)
+
+        test_kompressor = Kompressor(256, 0x01, 2, 0x03, 0, 10)
+
+        simpleEncoder = SimpleEncoder(test_kompressor.mVocabularySize)
+        test_kompressor.mEncoder = simpleEncoder
+
+        compressedData = test_kompressor.kompress(data, 5, outData, 256)
+
+        self.assertEqual(6, compressedData)
+        self.assertEqual(0x03, simpleEncoder.mEncodedData[0])
+        self.assertEqual(257, simpleEncoder.mEncodedData[1])
+        self.assertEqual(0x02, simpleEncoder.mEncodedData[2])
+        self.assertEqual(0x03, simpleEncoder.mEncodedData[3])
+        self.assertEqual(259, simpleEncoder.mEncodedData[4])
+        self.assertEqual(256, simpleEncoder.mEncodedData[5])
+
+    def test_kompress_small_data_set_onlyspecial_symbol2(self):
+        # Purpose: Compress a small data set with special symbols 2 only
+        # Expectation: The encoded data should match what is expected
+
+        data = array('i',[0x01, 0x01, 0x02, 0x03, 0x03])
+        outData = bytearray(256)
+
+        test_kompressor = Kompressor(256, 0x01, 0, 0x03, 2, 10)
+
+        simpleEncoder = SimpleEncoder(test_kompressor.mVocabularySize)
+        test_kompressor.mEncoder = simpleEncoder
+
+        compressedData = test_kompressor.kompress(data, 5, outData, 256)
+
+        self.assertEqual(7, compressedData)
+        self.assertEqual(0x00, simpleEncoder.mEncodedData[0])
+        self.assertEqual(0x03, simpleEncoder.mEncodedData[1])
+        self.assertEqual(0x01, simpleEncoder.mEncodedData[2])
+        self.assertEqual(259, simpleEncoder.mEncodedData[3])
+        self.assertEqual(0x03, simpleEncoder.mEncodedData[4])
+        self.assertEqual(0x02, simpleEncoder.mEncodedData[5])
+        self.assertEqual(256, simpleEncoder.mEncodedData[6])
+
     def test_kompress_medium_data_set(self):
         # Purpose: Compress a medium data set with special symbols 1 and 2
         # Expectation:

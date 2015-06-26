@@ -294,17 +294,28 @@ class Dekompressor:
         # Perform generic symbol run expansion
         lengthAfterGenericExpansion = self._expandRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mWorkingArray1, decodedDataLen_, self.mWorkingArray2, self.mWorkingArrayMaxSize)
 
+        reverseTransformInputData = self.mWorkingArray2
+        reverseTransformOutputData = self.mWorkingArray1
+        lengthAfterSymbol2Expansion = lengthAfterGenericExpansion
+
         # Perform second character replacement if possible
         if(self.mSpecialSymbol2MaxRun > 1):
             lengthAfterSymbol2Expansion = self._expandRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mWorkingArray2, lengthAfterGenericExpansion, self.mWorkingArray1, self.mWorkingArrayMaxSize)
+            reverseTransformInputData = self.mWorkingArray1
+            reverseTransformOutputData = self.mWorkingArray2
 
-        transform
         # Reverse the BW transform
-        lengthAfterBWReverse = self._reverseBWTransform(self.mWorkingArray1, lengthAfterSymbol2Expansion, self.mWorkingArray2, self.mWorkingArrayMaxSize)
+        lengthAfterBWReverse = self._reverseBWTransform(reverseTransformInputData, lengthAfterSymbol2Expansion, reverseTransformOutputData, self.mWorkingArrayMaxSize)
+
+        finalOutputData = reverseTransformOutputData
+        lengthAfterSymbol1Expansion = lengthAfterBWReverse
 
         # Perform first character expansion if possible
         if(self.mSpecialSymbol1MaxRun > 1):
-            lengthAfterSymbol1Expansion = self._expandRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, self.mWorkingArray2, lengthAfterBWReverse, self.mWorkingArray1, self.mWorkingArrayMaxSize)
+            expandSymbol1InputData = reverseTransformOutputData
+            expandSymbol1OutputData = reverseTransformInputData
+            finalOutputData = expandSymbol1OutputData
+            lengthAfterSymbol1Expansion = self._expandRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, expandSymbol1InputData, lengthAfterBWReverse, expandSymbol1OutputData, self.mWorkingArrayMaxSize)
 
         # If data exceeds section size throw exception
         if(lengthAfterSymbol1Expansion > self.mSectionSize):
@@ -317,9 +328,16 @@ class Dekompressor:
         # Copy the data to the byte array, all data should be between 0-255
         for i in range(0, lengthAfterSymbol1Expansion):
 
-            if(self.mWorkingArray1[i] > 255):
+            if(finalOutputData[i] > 255):
                 raise Exception('Invalid symbol, not in byte range')
 
-            outputData_[i] = self.mWorkingArray1[i]
+            outputData_[i] = finalOutputData[i]
 
         return lengthAfterSymbol1Expansion
+
+    def reset(self):
+        """
+        Reset the decoder. Kompressor must be reset as wel otherwise we will not be able to decompress data
+        :return:
+        """
+        self.mDecoder.reset()

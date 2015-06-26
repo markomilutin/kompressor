@@ -46,7 +46,7 @@ class AREncoder:
 
         self.mEncodedData = None
         self.mMaxEncodedDataLen = 0                                                # The max number of bytes that can be stored in mEncodedData
-        self.mEncodedDataCount = int(0)                                         # The number of bytes compressed data is taking up
+        self.mEncodedDataCount = int(0)                                            # The number of bytes compressed data is taking up
         self.mTotalSymbolCount = self.mVocabularySize                              # The total number of symbols encountered
         self.mE3ScaleCount = 0                                                     # Holds the number of E3 mappings currently outstanding
         self.mCurrentBitCount = 0                                                  # The current number of bits loaded onto the mCurrentByte variable
@@ -149,6 +149,56 @@ class AREncoder:
             valueMSB = ((self.mLowerTag & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
             tagRangeInMiddle = (((self.mUpperTag & self.mWordSecondMSBMask) == 0) and ((self.mLowerTag & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
 
+    def _rescale2(self, lowerTag_, upperTag_):
+        """
+        Currently HACK code to get multi stage encoding workin. Original function should be replaced to be usuable in all cases
+
+        Perform required rescale operation on the upper and lower tags. The following scaling operations are pefromed:
+            E1: both the upper and lower ranges fall into the bottom half of full range [0, 0.5). First bit is 0 for both.
+                Shift out MSB for both and shift in 1 for upper tag and 0 for lower tag
+            E2: both the upper and lower ranges fall into the top half of full range [0.5, 1). First bit is 1 for both.
+                Shift out MSB for both and shift in 1 for upper tag and 0 for lower tag
+            E3: the upper and lower tag interval lies in the middle [0.25, 0.75). The second MSB of upper tag is 0 and the second bit of the lower tag is 1.
+                Complement second MSB bit of both and shift in 1 for upper tag and 0 for lower tag. Keep track of consecutive E3 scalings
+
+        This version of the function will add to outgoing data but will not update any member variables except mE3ScaleCount, so the operation will not reflected in the statistics
+        :return: The new values for lower and upper tag [lower, upper]
+        """
+
+        sameMSB = ((lowerTag_ & self.mWordMSBMask) == (upperTag_ & self.mWordMSBMask))
+        valueMSB = ((lowerTag_ & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
+        tagRangeInMiddle = (((upperTag_ & self.mWordSecondMSBMask) == 0) and ((lowerTag_ & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
+
+
+        while(sameMSB or tagRangeInMiddle):
+
+            # If the first bit is the same we need to perform E1 or E2 scaling. The same set of steps applies to both. If the range is in the middle we need to perform E3 scaling
+            if(sameMSB):
+                self._append_bit(valueMSB)
+                lowerTag_ = (lowerTag_ << 1) & self.mWordBitMask
+                upperTag_ = ((upperTag_ << 1) | 0x0001) & self.mWordBitMask
+
+                while(self.mE3ScaleCount > 0):
+                    self._append_bit((~valueMSB) & 0x0001)
+                    self.mE3ScaleCount -= 1
+
+            elif(tagRangeInMiddle):
+                lowerTag_ = (lowerTag_ << 1) & self.mWordBitMask
+                upperTag_ = (upperTag_ << 1) & self.mWordBitMask
+
+                lowerTag_ = ((lowerTag_ & (~self.mWordMSBMask)) | ((~lowerTag_) & self.mWordMSBMask))
+                upperTag_ = ((upperTag_ & (~self.mWordMSBMask)) | ((~upperTag_) & self.mWordMSBMask))
+
+                self.mE3ScaleCount += 1
+
+
+            sameMSB = ((lowerTag_ & self.mWordMSBMask) == (upperTag_ & self.mWordMSBMask))
+            valueMSB = ((lowerTag_ & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
+            tagRangeInMiddle = (((upperTag_ & self.mWordSecondMSBMask) == 0) and ((lowerTag_ & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
+
+        return [lowerTag_, upperTag_]
+
+
     def _update_range_tags(self, newSymbolIndex_):
         """
         Update the upper and lower tags according to stats for the incoming symbol
@@ -171,6 +221,33 @@ class AREncoder:
         self.mUpperTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol))/self.mTotalSymbolCount - 1))
 
         self._increment_count(newSymbolIndex_)
+
+    def _update_range_tags2(self, newSymbolIndex_, lowerTag_, upperTag_):
+        """
+        Currently HACK code to get multi stage encoding workin. Original function should be replaced to be usuable in all cases
+
+        Update the passed in upper and lower tags based on the incoming symbol index. Do not update any other member variables
+
+        :param newSymbol_: Current symbol being encoded
+        :param lowerTag_: lower tag that needs to be updated
+        :param upperTag_: upper tag that needs to be updated
+        :return: Returns the updated lower and upper tags, [lowerTag_, upperTag_]
+        """
+
+        prevLowerTag = lowerTag_
+        prevUpperTag = upperTag_
+        rangeDiff = prevUpperTag - prevLowerTag
+        cumulativeCountSymbol = self.mSymbolCumulativeCount[newSymbolIndex_]
+        cumulativeCountPrevSymbol = 0
+
+        # If this is not the first index then set the previous symbol count to actual value
+        if(newSymbolIndex_ >= 1):
+            cumulativeCountPrevSymbol = self.mSymbolCumulativeCount[newSymbolIndex_-1]
+
+        lowerTag_ = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountPrevSymbol))/self.mTotalSymbolCount))
+        upperTag_ = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol))/self.mTotalSymbolCount - 1))
+
+        return [lowerTag_, upperTag_]
 
     def _normalize_stats(self):
         """
@@ -208,7 +285,7 @@ class AREncoder:
 
             self.mTotalSymbolCount += indexCount
 
-    def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_):
+    def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_, lastDataBlock=True):
         """
         Encode the data passed in. The encoded data will be stored in encodedData_ and if there is not enough room an
         exception will be thrown. Encoding statistics will not be reset when this function is called. It is up-to the caller
@@ -231,6 +308,8 @@ class AREncoder:
             raise Exception("Encoded data byte array passed in smaller than expected")
 
         self.mEncodedData = encodedData_
+        self.mEncodedDataCount = 0
+        self.mCurrentBitCount = 0
         self.mMaxEncodedDataLen = maxEncodedDataLen_
 
         # Go through and compress data one byte at a time
@@ -238,9 +317,19 @@ class AREncoder:
             self._update_range_tags(dataToEncode_[i])
             self._rescale()
 
+        lowerTagToSend = self.mLowerTag
+
+        # If not last data block insert extra symbol so that we can properly carry over on decoder. The decoder must be able to fully process the last symbol in order to work properly.
+        # As data is transferred in bytes (not bits) there remains the possibility of extra 0 bits after data has ended which will confuse the decoder. If the last symbol encoded is a don't care then the decoder will properly pick up the actual last symbol.
+        # The last symbol can't be reflected in the statistics as it will be thrown away on the decoder side
+        if(lastDataBlock == False):
+            [lower, upper] = self._update_range_tags2(0, self.mLowerTag, self.mUpperTag)
+            [lower, upper] = self._rescale2(lower, upper)
+            lowerTagToSend = lower
+
         # Store the current state of the lower tag to mark the completion of the compression
         for i in range(0, self.mWordSize):
-            bitValue = (self.mLowerTag >> ((self.mWordSize - 1) - i)) & 0x0001
+            bitValue = (lowerTagToSend >> ((self.mWordSize - 1) - i)) & 0x0001
 
             self._append_bit(bitValue)
 

@@ -20,7 +20,7 @@ class SimpleEncoder:
         self.mVocabularySize = vocabularySize_
         self.mEncodedData = array('i')
 
-    def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_):
+    def encode(self, dataToEncode_, dataLen_, encodedData_, maxEncodedDataLen_, lastDataBlock=True):
         """
         Encode the data passed in. Just store the the symbols into the test integer array
 

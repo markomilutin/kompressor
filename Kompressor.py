@@ -284,7 +284,7 @@ class Kompressor:
 
         return (dataSize_ + self.mBWTransformStoreBytes)
 
-    def kompress(self, inputData_, inputDataLen_, outputData_, maxOutputLen_):
+    def kompress(self, inputData_, inputDataLen_, outputData_, maxOutputLen_, lastDataBlock=True):
         """
         Pass in integer array of data that needs to be compressed. The compressed data will
         be stored in the outputData_ bytearray.
@@ -305,6 +305,8 @@ class Kompressor:
         if(inputDataLen_ > self.mSectionSize):
             raise Exception('Data length exceeds max section size')
 
+        lengthAfterSymbol1Replacement = inputDataLen_
+
         # Perform first character replacement if possible
         if(self.mSpecialSymbol1MaxRun > 1):
             lengthAfterSymbol1Replacement = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
@@ -312,6 +314,7 @@ class Kompressor:
         # Transform data using BW transform
         lengthAfterBWTransform = self._performBWTransform(inputData_, lengthAfterSymbol1Replacement, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
 
+        lengthAfterSymbol2Replacement = lengthAfterBWTransform
         # Perform second character replacement if possible
         if(self.mSpecialSymbol2MaxRun > 1):
             lengthAfterSymbol2Replacement = self._replaceRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mSectionTransformData, lengthAfterBWTransform)
@@ -323,7 +326,15 @@ class Kompressor:
         self.mSectionTransformData[lengthAfterGenericReplacement] = self.TERMINATION_SYMBOL
         lengthAfterGenericReplacement += 1
 
-        return self.mEncoder.encode(self.mSectionTransformData, lengthAfterGenericReplacement, outputData_, maxOutputLen_)
+        return self.mEncoder.encode(self.mSectionTransformData, lengthAfterGenericReplacement, outputData_, maxOutputLen_, lastDataBlock=lastDataBlock)
+
+    def reset(self):
+        """
+        Reset the encoder. This will reset all encoder statistics. Dekompressor must be reset as well otherwise we will not be able to decompress data
+
+        :return:
+        """
+        self.mEncoder.reset()
 
     def kompressStartContinuous(self, totalDataToCompress_):
         """
