@@ -58,7 +58,7 @@ class Dekompressor:
         self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
         self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
-        self.mDecoder = ARDecoder(32, self.mVocabularySize, self.TERMINATION_SYMBOL)
+        self.mDecoder = ARDecoder(13, self.mVocabularySize, self.TERMINATION_SYMBOL)
 
         self.mWorkingArrayMaxSize = self.mSectionSize + self.mBWTransformStoreBytes
         self.mWorkingArray1 = array('i', [0]*(self.mWorkingArrayMaxSize))
@@ -228,25 +228,32 @@ class Dekompressor:
         restoredDataIndex += 1
         numSymbolsToRevert -= 1
 
+        originalDataListToSearch = incomingData_[self.mBWTransformStoreBytes:].tolist()
+
         # Go through all the data
         while(numSymbolsToRevert > 0):
 
             symbolCount = 1
 
-            # Go through the sorted data and determine how many copies of the symbol appear beforehand
-            for i in range(0,currentIndex):
-                # If it's the same symbol increment count
-                if(sortedData[i] == currentSymbol):
-                    symbolCount += 1
+            symbolCount += sortedData[0:currentIndex].count(currentSymbol)
+
+            ## Go through the sorted data and determine how many copies of the symbol appear beforehand
+            #for i in range(0,currentIndex):
+            #    # If it's the same symbol increment count
+            #    if(sortedData[i] == currentSymbol):
+            #        symbolCount += 1
 
             # Find the corresponding symbol in the transformed string, must be the at the same count as the symbol in the sorted array. Skip the indices with transform info which is not part of the original data
-            currentIndex = self.mBWTransformStoreBytes
+
+            currentIndex = 0
 
             # Go through the original sequence and find the matching symbol index which will be our next index in the sorted array
-            while((currentIndex < incomingDataSize_) and (symbolCount > 0)):
+            while((currentIndex >= 0) and (currentIndex < len(originalDataListToSearch)) and (symbolCount > 0)):
 
                 # If the current symbol has been found decrease the symbol count
-                if(incomingData_[currentIndex] == currentSymbol):
+                currentIndex = originalDataListToSearch.index(currentSymbol, currentIndex)
+
+                if(originalDataListToSearch[currentIndex] == currentSymbol):
                     symbolCount -= 1
 
                 # If have not reached the symbol we want increment the index
@@ -254,11 +261,11 @@ class Dekompressor:
                     currentIndex += 1
 
             # We should always find the the symbols we are looking for
-            if((currentIndex >= incomingDataSize_) or (symbolCount < 0)):
+            if((currentIndex < 0) or (currentIndex >= incomingDataSize_) or (symbolCount < 0)):
                 raise Exception('Corrupted data')
 
             # Need to adjust as the transformed data contains extra transform info
-            currentIndex -= self.mBWTransformStoreBytes
+            #currentIndex -= self.mBWTransformStoreBytes
 
             # Get the current symbol and store it
             currentSymbol = sortedData[currentIndex]

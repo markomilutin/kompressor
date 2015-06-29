@@ -1012,7 +1012,7 @@ class KompressorTests(unittest.TestCase):
 
         compressedData = bytearray(1024)
 
-        compressedDataLen = kompressor.kompress(inputDataToSend, inputDataLen, compressedData, 1024)
+        compressedDataLen = kompressor.kompress(inputDataToSend, inputDataLen, compressedData, 1024,lastDataBlock=False)
 
         uncompressedData = bytearray(1024)
         uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
@@ -1022,7 +1022,7 @@ class KompressorTests(unittest.TestCase):
         for i in range(0, inputDataLen):
             self.assertEqual(inputData[i], uncompressedData[i])
 
-        compressedDataLen = kompressor.kompress(inputDataToSend2, inputDataLen, compressedData, 1024)
+        compressedDataLen = kompressor.kompress(inputDataToSend2, inputDataLen, compressedData, 1024,lastDataBlock=False)
 
         uncompressedData = bytearray(1024)
         uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
@@ -1032,7 +1032,7 @@ class KompressorTests(unittest.TestCase):
         for i in range(0, inputDataLen):
             self.assertEqual(inputData[i], uncompressedData[i])
 
-        compressedDataLen = kompressor.kompress(inputDataToSend3, inputDataLen, compressedData, 1024)
+        compressedDataLen = kompressor.kompress(inputDataToSend3, inputDataLen, compressedData, 1024,lastDataBlock=False)
 
         uncompressedData = bytearray(1024)
         uncompressedDataLen = dekompressor.dekompress(compressedData, compressedDataLen, uncompressedData, 1024)
@@ -1041,6 +1041,49 @@ class KompressorTests(unittest.TestCase):
 
         for i in range(0, inputDataLen):
             self.assertEqual(inputData[i], uncompressedData[i])
+
+
+    def test_dekompressor_largefile(self):
+        """
+        Purpose: Read in a hex file in ascii format line by line, convert to binary and compress and decompress
+        Expectation: Decompressed data should match compressed data
+        """
+
+        kompressor = Kompressor(2048, 0x00, 5, 0x00, 0, 15)
+        dekompressor = Dekompressor(2048, 0x00, 5, 0x00, 0, 15)
+
+        testFile = 'testFile.ascii'
+
+        inputData = array('i', [0]*2048)
+        compressedData = bytearray(2048)
+        decompressedData = bytearray(2048)
+        count = 0
+
+        with open(testFile, 'r+') as f:
+
+            for line in f:
+
+                # Strip terminating characters and conver to hex from ascii
+                line = line.strip()
+                lineBytes = bytearray.fromhex(line)
+                inputDataSize = len(lineBytes)
+
+                # Copy the data into the integer array
+                for i in range(0, inputDataSize):
+                    inputData[i] = lineBytes[i]
+
+                if(count == 47):
+                    x = 2
+
+                compressedLineLen = kompressor.kompress(inputData, inputDataSize, compressedData, 2048, lastDataBlock=False)
+
+                decompressedLineLen = dekompressor.dekompress(compressedData, compressedLineLen, decompressedData, 2048)
+
+                self.assertEqual(decompressedLineLen, inputDataSize)
+                self.assertEqual(decompressedData[:decompressedLineLen],lineBytes)
+
+                count += 1
+
 
 if __name__ == '__main__':
     unittest.main()
