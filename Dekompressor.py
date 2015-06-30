@@ -27,7 +27,7 @@ class Dekompressor:
     TERMINATION_SYMBOL = 256 # Used to indicate end of compression sequence
     INVALID_SYMBOL = 0xFFFF
 
-    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_):
+    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_, decoderWordSize_ = 32):
         """
         Constructor
 
@@ -37,6 +37,7 @@ class Dekompressor:
         :param specialSymbol2_: Special symbol whose runs will be removed after the BW transform
         :param specialSymbol2MaxRun_: The max run of special symbol 2
         :param genericMaxRun_: The max run of generic symbols
+        :param decoderWordSize_: The size of words (in bits) to use for decoding data
         :return:
         """
 
@@ -58,7 +59,7 @@ class Dekompressor:
         self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
         self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
-        self.mDecoder = ARDecoder(13, self.mVocabularySize, self.TERMINATION_SYMBOL)
+        self.mDecoder = ARDecoder(decoderWordSize_, self.mVocabularySize, self.TERMINATION_SYMBOL)
 
         self.mWorkingArrayMaxSize = self.mSectionSize + self.mBWTransformStoreBytes
         self.mWorkingArray1 = array('i', [0]*(self.mWorkingArrayMaxSize))

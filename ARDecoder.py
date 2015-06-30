@@ -16,13 +16,13 @@ class ARDecoder:
         """
         Initialize the object
 
-        :param wordSize_: The word size (bits) that will be used for compression. Must be greater than 2 and less than 16
+        :param wordSize_: The word size (bits) that will be used for compression. Must be greater than 2 and less than 32
         :param: vocabularySize_: The size of the vocabulary. Symbols run rom 0 to (vocabularySize -1)
         :param terminationSymbol_: Symbol which indicates the end of encoded data where decoding should stop. This is required to properly terminate decoding
         :return: None
         """
 
-        self.mMaxDecodingBytes = utils.calculateMaxBytes(wordSize_)                          # The max number of bytes we can decompress before the statistics need to be re-normalized
+        self.mMaxDecodingBytes = utils.calculateMaxBytes(wordSize_)                          # The max number of bytes we can decode before the statistics need to be re-normalized
         self.mVocabularySize = vocabularySize_
         self.mTerminationSymbol = terminationSymbol_
 

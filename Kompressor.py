@@ -27,6 +27,7 @@ import utils
 dataSorting = None
 dataSortingSize = 0
 
+# This class is used to sort data for the BW transform
 class SortKey:
     def __init__(self, keyData_, *args):
         self.mIndex = keyData_[0]
@@ -66,7 +67,7 @@ class Kompressor:
     TERMINATION_SYMBOL = 256 # Used to indicate end of compression sequence
     INVALID_SYMBOL = 0xFFFF
 
-    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_):
+    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_, encoderWordSize_ = 32):
         """
         Constructor
 
@@ -76,6 +77,7 @@ class Kompressor:
         :param specialSymbol2_: Special symbol whose runs will be removed after the BW transform
         :param specialSymbol2MaxRun_: The max run of special symbol 2
         :param genericMaxRun_: The max run of generic symbols
+        :param encoderWordSize_: The size of words (in bits) to use for encoding data
         :return:
         """
 
@@ -97,7 +99,7 @@ class Kompressor:
         self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
         self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
-        self.mEncoder = AREncoder(13, self.mVocabularySize)
+        self.mEncoder = AREncoder(encoderWordSize_, self.mVocabularySize)
 
         self.mContinuousModeEnabled = False
         self.mContinuousModeTotalData = 0
