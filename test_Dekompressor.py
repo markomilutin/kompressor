@@ -15,18 +15,12 @@ class KompressorTests(unittest.TestCase):
         Expectation: The member variables should be initialized correctly
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         self.assertEqual(256, dekompressor.mSectionSize)
-        self.assertEqual(0, dekompressor.mSpecialSymbol1)
-        self.assertEqual(3, dekompressor.mSpecialSymbol1MaxRun)
-        self.assertEqual(257, dekompressor.mSpecialSymbol1RunLengthStart)
-        self.assertEqual(0xFF, dekompressor.mSpecialSymbol2)
-        self.assertEqual(4, dekompressor.mSpecialSymbol2MaxRun)
-        self.assertEqual(260, dekompressor.mSpecialSymbol2RunLengthStart)
         self.assertEqual(10, dekompressor.mGenericMaxRun)
-        self.assertEqual(264, dekompressor.mGenericRunLengthStart)
-        self.assertEqual(257+3+4+10, dekompressor.mVocabularySize)
+        self.assertEqual(257, dekompressor.mGenericRunLengthStart)
+        self.assertEqual(257+10, dekompressor.mVocabularySize)
         self.assertEqual(1, dekompressor.mBWTransformStoreBytes)
         self.assertNotEqual(None, dekompressor.mSectionTransformData)
         self.assertEqual(257, len(dekompressor.mSectionTransformData))
@@ -42,7 +36,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: 0 data should be expanded
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [])
         expandedData = array('i', [0]*32)
@@ -57,7 +51,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: The data should be expanded correctly
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [257, 2, 0, 4, 260])
         expandedData = array('i', [0]*32)
@@ -82,7 +76,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: The data should be expanded correctly
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [1, 2, 260, 5, 6, 7, 259, 259, 260, 260, 257, 8, 9, 0, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         expandedData = array('i', [0]*64)
@@ -143,7 +137,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [256, 2, 0, 4, 300])
         expandedData = array('i', [0]*32)
@@ -157,7 +151,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [256, 2, 0, 4, 350])
         expandedData = array('i', [0]*32)
@@ -171,7 +165,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [257, 2, 0, 4, 260])
         expandedData = array('i', [0]*8)
@@ -185,7 +179,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [257, 2, 0, 4, 2])
         expandedData = array('i', [0]*5)
@@ -199,7 +193,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [257, 2, 0, 4, 2])
         expandedData = array('i', [0]*5)
@@ -213,7 +207,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: 0 data should be expanded
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [])
         expandedData = array('i', [0]*32)
@@ -228,7 +222,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: The data should be expanded correctly
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [1, 257, 2, 0, 4, 260, 260, 257])
         expandedData = array('i', [0]*32)
@@ -257,7 +251,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: The data should be expanded correctly
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [1, 2, 260, 5, 6, 7, 259, 259, 260, 260, 257, 8, 9, 0, 1, 1, 2, 0, 0, 0, 258, 0, 0, 0, 0, 0, 258])
         expandedData = array('i', [0]*64)
@@ -314,7 +308,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [256, 2, 0, 4, 260])
         expandedData = array('i', [0]*32)
@@ -328,7 +322,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [256, 2, 0, 4, 264])
         expandedData = array('i', [0]*32)
@@ -342,7 +336,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [1, 257, 0, 4, 260])
         expandedData = array('i', [0]*8)
@@ -356,7 +350,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         compressedData = array('i', [1, 257, 2, 0, 4, 2])
         expandedData = array('i', [0]*5)
@@ -370,7 +364,7 @@ class KompressorTests(unittest.TestCase):
         Expectation: An exception should be thrown
         """
 
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        dekompressor = Dekompressor(256, 10)
 
         transforedData = array('i', [0])
         restoredData = array('i', [3])
@@ -384,8 +378,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: The reversed data should match the original data
         """
 
-        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(256, 10)
+        dekompressor = Dekompressor(256, 10)
 
         preTransformData = array('i', [1, 257, 2, 0, 4, 2, 5, 5, 5, 3, 4, 1, 2, 9, 0, 2, 1, 257]) # 18 bytes
         transforedData = array('i', [0]*19)
@@ -406,8 +400,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: Data should come out the same as the original after reversal
         """
 
-        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(256, 10)
+        dekompressor = Dekompressor(256, 10)
 
         preTransformData = array('i',
                                  [0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
@@ -439,8 +433,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: Data should come out the same after reverse
         """
 
-        kompressor = Kompressor(256, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(256, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(256, 10)
+        dekompressor = Dekompressor(256, 10)
 
         preTransformData = array('i',
                                  [0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
@@ -478,12 +472,12 @@ class KompressorTests(unittest.TestCase):
 
     def test_reverseBWTransform_Seq2_LargerDataSection(self):
         """
-        Purpose: Test with sequence 2 but use a larger section size which will increase number of symbols used for transfor info to 2
+        Purpose: Test with sequence 2 but use a larger section size which will increase number of symbols used for transfer info to 2
         Expectation: Data should come out the same after reverse
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         preTransformData = array('i',
                                  [0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
@@ -525,8 +519,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: Data should come out the same after reverse
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         preTransformData = array('i',
                                  [
@@ -590,8 +584,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: Data should come out the same after reverse
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         preTransformData = array('i', [1, 2, 258, 255, 255, 257, 3, 255, 3, 45, 255, 55, 55, 66, 99, 255, 255, 1, 2, 255, 0, 33, 255, 33, 33, 33, 33, 99, 255, 255, 255, 255, 255, 255])
 
@@ -613,8 +607,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i', [1,2,0,0,0,0xFF,0,0,3,3,45,55,55,66,99,1,2,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #28
         inputDataToSend = array('i', [1,2,0,0,0,0xFF,0,0,3,3,45,55,55,66,99,1,2,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #28
@@ -642,8 +636,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 4, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 4, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
         inputDataToSend = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
@@ -671,8 +665,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 3, 0xFF, 0, 10)
-        dekompressor = Dekompressor(2048, 0x00, 3, 0xFF, 0, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
         inputDataToSend = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
@@ -701,8 +695,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 0, 0xFF, 3, 10)
-        dekompressor = Dekompressor(2048, 0x00, 0, 0xFF, 3, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
         inputDataToSend = array('i', [1,2,0,0,0,0xFF,0xFF,0,0,3,0xFF,3,45,0xFF,55,55,66,99,0xFF,0xFF,1,2,0xFF,0,33,0xFF,33,33,33,33,99,0xFF,0xFF,0xFF]) #34
@@ -731,8 +725,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 0, 0xFF, 3, 10)
-        dekompressor = Dekompressor(2048, 0x00, 0, 0xFF, 3, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i',
                                  [
@@ -846,8 +840,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 0, 0xFF, 3, 10)
-        dekompressor = Dekompressor(2048, 0x00, 0, 0xFF, 3, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i',
                                  [
@@ -957,8 +951,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: After undergoing compression and decompression the end data should be the same as the original
         """
 
-        kompressor = Kompressor(2048, 0x00, 0, 0xFF, 3, 10)
-        dekompressor = Dekompressor(2048, 0x00, 0, 0xFF, 3, 10)
+        kompressor = Kompressor(2048, 10)
+        dekompressor = Dekompressor(2048, 10)
 
         inputData = array('i',
                                  [
@@ -1049,8 +1043,8 @@ class KompressorTests(unittest.TestCase):
         Expectation: Decompressed data should match compressed data
         """
 
-        kompressor = Kompressor(2048, 0x00, 5, 0x00, 0, 15)
-        dekompressor = Dekompressor(2048, 0x00, 5, 0x00, 0, 15)
+        kompressor = Kompressor(2048, 15)
+        dekompressor = Dekompressor(2048, 15)
 
         testFile = 'testFile.ascii'
 
@@ -1063,7 +1057,7 @@ class KompressorTests(unittest.TestCase):
 
             for line in f:
 
-                # Strip terminating characters and conver to hex from ascii
+                # Strip terminating characters and convert to hex from ascii
                 line = line.strip()
                 lineBytes = bytearray.fromhex(line)
                 inputDataSize = len(lineBytes)
@@ -1071,9 +1065,6 @@ class KompressorTests(unittest.TestCase):
                 # Copy the data into the integer array
                 for i in range(0, inputDataSize):
                     inputData[i] = lineBytes[i]
-
-                if(count == 47):
-                    x = 2
 
                 compressedLineLen = kompressor.kompress(inputData, inputDataSize, compressedData, 2048, lastDataBlock=False)
 

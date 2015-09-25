@@ -16,7 +16,7 @@ class ARDecoder:
         """
         Initialize the object
 
-        :param wordSize_: The word size (bits) that will be used for compression. Must be greater than 2 and less than 32
+        :param wordSize_: The word size (bits) that will be used for compression. Must be greater than 2 and less than 16
         :param: vocabularySize_: The size of the vocabulary. Symbols run rom 0 to (vocabularySize -1)
         :param terminationSymbol_: Symbol which indicates the end of encoded data where decoding should stop. This is required to properly terminate decoding
         :return: None
@@ -38,8 +38,8 @@ class ARDecoder:
         for i in range(0, self.mWordSize):
             self.mWordBitMask = (self.mWordBitMask << 1) | 0x0001
 
-        # We are initializing with an assumption of a value of 1 for the count of each symbol. The initial cumulative count data will just be an incrementing series up to vocabulary size
-        self.mSymbolCumulativeCount = array.array('i', range(1, self.mVocabularySize + 1))         # Hold current count of symbols encountered
+        # We are initializing with an assumption of a value of 1 for the count of each symbol.
+        self.mSymbolCount = array.array('i', [1]*self.mVocabularySize)
 
         # Reset member variables that are not constant
         self.reset()
@@ -62,9 +62,9 @@ class ARDecoder:
         self.mUpperTag = self.mWordBitMask                                      # The upper tag threshold
         self.mCurrentTag = 0                                                    # The current tag we are processing
 
-        # We are initializing with an assumption of a value of 1 for the count of each symbol. The initial cumulative count data will just be an incrementing series up to vocabulary size
+        # We are initializing with an assumption of a value of 1 for the count of each symbol
         for i in range(0,self.mVocabularySize):
-            self.mSymbolCumulativeCount[i] = (i + 1)
+            self.mSymbolCount[i] = 1
 
     def _get_next_bit(self):
         """
@@ -90,17 +90,14 @@ class ARDecoder:
 
     def _increment_count(self, indexToIncrement_):
         """
-        Update the count for the provided index. We need to adjust all cumulative values above this index by one. Update
+        Update the count for the provided index. Update
         the total symbol count as well. If we exceed the max symbol count normalize the stats
 
         :param indexToIncrement_: The index which we are updating
         :return: None
         """
 
-        # Update the cumulative count for the current index and the ones that follow
-        for i in range(indexToIncrement_, self.mVocabularySize):
-            self.mSymbolCumulativeCount[i] += 1
-
+        self.mSymbolCount[indexToIncrement_] += 1
         self.mTotalSymbolCount += 1
 
         # If we have reached the max number of bytes, we need to normalize the stats to allow us to continue
@@ -144,64 +141,46 @@ class ARDecoder:
             valueMSB = ((self.mLowerTag & self.mWordMSBMask) >> (self.mWordSize -1)) & 0x0001
             tagRangeInMiddle = (((self.mUpperTag & self.mWordSecondMSBMask) == 0) and ((self.mLowerTag & self.mWordSecondMSBMask) == self.mWordSecondMSBMask))
 
-    def _update_range_tags(self, currentSymbolIndex_):
+    def _update_range_tags(self, currentSymbolIndex_, cumulativeCountSymbol_):
         """
         Update the upper and lower tags according to stats for the incoming symbol
 
         :param newSymbol_: Current symbol being encoded
-        :return:
+        :param cumulativeCountSymbol_: The cumulative count of the current symbol
+        :return: None
         """
 
         prevLowerTag = self.mLowerTag
         prevUpperTag = self.mUpperTag
         rangeDiff = prevUpperTag - prevLowerTag
-        cumulativeCountSymbol = self.mSymbolCumulativeCount[currentSymbolIndex_]
-        cumulativeCountPrevSymbol = 0
-
-        # If this is not the first index then set the previous symbol count to actual value
-        if(currentSymbolIndex_ >= 1):
-            cumulativeCountPrevSymbol = self.mSymbolCumulativeCount[currentSymbolIndex_-1]
+        cumulativeCountPrevSymbol = cumulativeCountSymbol_ - self.mSymbolCount[currentSymbolIndex_]
 
         self.mLowerTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountPrevSymbol))/self.mTotalSymbolCount))
-        self.mUpperTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol))/self.mTotalSymbolCount - 1))
+        self.mUpperTag = int((prevLowerTag + math.floor(((rangeDiff + 1)*cumulativeCountSymbol_))/self.mTotalSymbolCount - 1))
 
         self._increment_count(currentSymbolIndex_)
 
     def _normalize_stats(self):
         """
-        Divide the total count for each vocabulary by 2, the new value must be at least one. Use the cumulative
-        vocabulary counts to accomplish this, Get new total symbol count from the entries
+        Divide the total count for each symbol by 2 but ensure each symbol count is at least 1.
+        Get new total symbol count from the entries
 
         :return: None
         """
 
         self.mTotalSymbolCount = 0
-        prevOldCumulativeCount = 0
 
         # Go through all the entries in the cumulative count array
         for i in range(0, self.mVocabularySize):
 
-            # If it's not the first index get the difference between cumulative counts to get the actual count
-            if(i != 0):
-                indexCount = self.mSymbolCumulativeCount[i] - prevOldCumulativeCount
-            else:
-                indexCount = self.mSymbolCumulativeCount[i]
+            value = int(self.mSymbolCount[i]/2)
 
-            prevOldCumulativeCount = self.mSymbolCumulativeCount[i]
+            # Ensure the count is at least 1
+            if(value == 0):
+                value = 1
 
-            indexCount = int(indexCount/2)
-
-            # Has to be at least one
-            if(indexCount == 0):
-                indexCount = 1
-
-            # If it's not the first index use the previous index value to get the current cumulative count
-            if(i != 0):
-                self.mSymbolCumulativeCount[i] = self.mSymbolCumulativeCount[i-1] + indexCount
-            else:
-                self.mSymbolCumulativeCount[i] = indexCount
-
-            self.mTotalSymbolCount += indexCount
+            self.mSymbolCount[i] = value
+            self.mTotalSymbolCount += value
 
     def decode(self, encodedData_, encodedDataLen_, decodedData_, maxDecodedDataLen_):
         """
@@ -243,11 +222,15 @@ class ARDecoder:
             currentSymbol = 0
             currentCumulativeCount = int(math.floor(((self.mCurrentTag - self.mLowerTag + 1)*self.mTotalSymbolCount - 1)/(self.mUpperTag - self.mLowerTag +1)))
 
-            while(currentCumulativeCount >= self.mSymbolCumulativeCount[currentSymbol]):
-                currentSymbol +=1
+            symbolCumulativeCount = self.mSymbolCount[0]
+
+            while(currentCumulativeCount >= symbolCumulativeCount):
+                currentSymbol += 1
 
                 if(currentSymbol >= self.mVocabularySize):
                     raise Exception("Symbol count of out range")
+
+                symbolCumulativeCount += self.mSymbolCount[currentSymbol]
 
             # If we have reached the termination symbol then decoding is finished, otherwise store the decompressed symbol
             if(currentSymbol == self.mTerminationSymbol):
@@ -260,10 +243,7 @@ class ARDecoder:
                 if(self.mDecodedDataLen >= maxDecodedDataLen_):
                     raise Exception('Not enough space to store decoded data')
 
-            self._update_range_tags(currentSymbol)
+            self._update_range_tags(currentSymbol, symbolCumulativeCount)
             self._rescale()
 
-
-
         return self.mDecodedDataLen
-

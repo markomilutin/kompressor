@@ -9,76 +9,91 @@ import array
 from binascii import unhexlify
 
 def main():
-    #inputFileName = sys.argv[1]
 
-    inputFileName = '3.104R1_BDG.dld'
-    outputOriginalInBinaryName = '3.104R1_BDG.dld.bin'
-    outputCompressedFileName = '3.104R1_BDG.dld.compressed'
+    if(len(sys.argv) < 2):
+        return
+
+    inputFileName = sys.argv[1]
+
+    if(len(sys.argv) == 3):
+        numLinesAtOnce = int(sys.argv[2])
+    else:
+        numLinesAtOnce = 1
+
+    outputCompressedFileName = inputFileName + '.compressed'
 
     totalCompressionTime = 0
-
     fileSize = 0
     compressedFileSize = 0
 
     inputData = array.array('i', [0]*2048)
     inputDataSize = 0
 
-    kompressor = Kompressor(2048, 0x00, 5, 0x00, 0, 20)
-    dekompressor = Dekompressor(2048, 0x00, 5, 0x00, 0, 20)
+    kompressor = Kompressor(2048*numLinesAtOnce, 10, 13)
+    dekompressor = Dekompressor(2048*numLinesAtOnce, 10, 13)
 
     # Hold all the compressed data in lines
     compressedFileData = []
 
+    print('Input Filename: ' + inputFileName);
+    print('Output Filename: ' + outputCompressedFileName);
 
-    #outputOriginalInBinary = open(outputOriginalInBinaryName, 'wb+')
-    #outputCompressedFile = open(outputCompressedFileName, 'wb+')
-
+    profile = cProfile.Profile()
+    profile.enable()
     # Go through each line in file
-    with open(inputFileName, 'r+') as f, open(outputOriginalInBinaryName, 'wb+') as outputOriginalInBinary, open(outputCompressedFileName, 'wb+') as outputCompressedFile:
+
+    lineCount = 0
+    dataToCompress = []
+
+    with open(inputFileName, 'r+') as f, open(outputCompressedFileName, 'wb+') as outputCompressedFile:
 
         for line in f:
-            # Strip terminating characters and conver to hex from ascii
 
+            # Strip terminating characters and conver to hex from ascii
             line = line.strip()
             lineBytes = bytearray.fromhex(line)
-
-            outputOriginalInBinary.write(lineBytes)
             inputDataSize = len(lineBytes)
-
 
             # Copy the data into the integer array
             for i in range(0, inputDataSize):
                 inputData[i] = lineBytes[i]
 
-            compressedData = bytearray(2048)
-            compressedLineLen = kompressor.kompress(inputData, inputDataSize, compressedData, 2048,lastDataBlock=False)
+            dataToCompress.extend(inputData[:inputDataSize])
+            dataToCompressSize = len(dataToCompress)
+            lineCount += 1
 
-            compressedFileData.append([compressedLineLen, inputDataSize, compressedData])
+            if(lineCount >= numLinesAtOnce):
+                compressedData = bytearray(2048*numLinesAtOnce)
+                compressedLineLen = kompressor.kompress(dataToCompress, dataToCompressSize, compressedData, 2048*numLinesAtOnce,lastDataBlock=False)
 
-            #Write compressed line to compressed file
-            outputCompressedFile.write(compressedData[0:compressedLineLen])
+                compressedFileData.append([compressedLineLen, dataToCompressSize, compressedData])
 
-            fileSize += inputDataSize
-            compressedFileSize += compressedLineLen
+                #Write compressed line to compressed file
+                outputCompressedFile.write(compressedData[0:compressedLineLen])
 
+                fileSize += dataToCompressSize
+                compressedFileSize += compressedLineLen
 
-    #print('Filename: ' + inputFileName);
-    #print('Size: ' + str(len(contents)))
+                dataToCompress = []
+                lineCount = 0
 
-    #profile = cProfile.Profile()
-    #profile.enable()
-    #testcode
-    #profile.disable()
+    profile.disable()
+
+    print('Input File Size: ' + str(fileSize))
+    print('Output File Size: ' + str(compressedFileSize))
+    print('Compression Percentage: ' + str(int(compressedFileSize/fileSize*100)) + '%')
+
+    profile.print_stats()
 
     decompressedFileData = []
     decompressedSize = 0
 
     # Dekompress the data stored in memory
     for i in range(0,len(compressedFileData)):
-        decompressedData = bytearray(2048)
+        decompressedData = bytearray(2048*numLinesAtOnce)
         [compressedLineLen, inputDataSize, compressedLineData]  = compressedFileData[i]
 
-        decompressedDataLen = dekompressor.dekompress(compressedLineData, compressedLineLen, decompressedData, 2048)
+        decompressedDataLen = dekompressor.dekompress(compressedLineData, compressedLineLen, decompressedData, 2048*numLinesAtOnce)
 
         if(decompressedDataLen != inputDataSize):
             print('ERROR decompressing 1 at line [' + str(i) + ']')
@@ -89,6 +104,9 @@ def main():
 
     #Go through and veriy all decompressed lines match original
     count = 0
+    lineCount = 0
+    dataToCompare = bytearray()
+
     with open(inputFileName, 'r+') as f:
 
         for line in f:
@@ -96,17 +114,24 @@ def main():
             line = line.strip()
             lineBytes = bytearray.fromhex(line)
 
-            if(decompressedFileData[count][0] != len(lineBytes) or decompressedFileData[count][1][:decompressedFileData[count][0]] != lineBytes):
-                print('ERROR decompressing on line [' + str(count) + ']\r\n')
-                exit(0)
+            for dataByte in lineBytes:
+                dataToCompare.append(dataByte)
 
-            count += 1
+            dataToCompareSize = len(dataToCompare)
+            lineCount += 1
 
-    print('Compressed Size: ', str(compressedFileSize))
-    print('Compression Percentage: ', str(compressedFileSize/fileSize))
+            if(lineCount >= numLinesAtOnce):
+
+                if(decompressedFileData[count][0] != dataToCompareSize or decompressedFileData[count][1][:decompressedFileData[count][0]] != dataToCompare):
+                    print('ERROR decompressing 2 on line [' + str(count) + ']\r\n')
+                    exit(0)
+
+                lineCount = 0
+                dataToCompare = bytearray()
+                count += 1
 
     print('\n\n')
-    #profile.print_stats()
+    print('Decompression Validated')
 
 if __name__ == "__main__":
     main()

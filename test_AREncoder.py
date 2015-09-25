@@ -19,12 +19,12 @@ class TestAREncoder(unittest.TestCase):
 
         test_encoder = AREncoder(11, 257)
 
-        self.assertEqual(512, test_encoder.mMaxCompressionBytes)
+        self.assertEqual(512, test_encoder.mMaxEncodeBytes)
         self.assertEqual(11, test_encoder.mWordSize)
         self.assertEqual(0x07FF, test_encoder.mWordBitMask)
         self.assertEqual(0x0400, test_encoder.mWordMSBMask)
         self.assertEqual(0x0200, test_encoder.mWordSecondMSBMask)
-        self.assertNotEqual(None, test_encoder.mSymbolCumulativeCount)
+        self.assertNotEqual(None, test_encoder.mSymbolCount)
         self.assertEqual(None, test_encoder.mEncodedData)
 
         self.assertEqual(257, test_encoder.mTotalSymbolCount)
@@ -35,7 +35,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mCurrentBitCount)
 
         for i in range(0, test_encoder.mVocabularySize):
-            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_encoder.mSymbolCount[i])
 
     def test_reset(self):
         # Purpose: Re-initialize the members
@@ -53,11 +53,11 @@ class TestAREncoder(unittest.TestCase):
 
         # Initialize byte array to a count of one for each symbol
         for i in range(0, 256):
-            test_encoder.mSymbolCumulativeCount[i] = 4
+            test_encoder.mSymbolCount[i] = 4
 
         test_encoder.reset();
 
-        self.assertNotEqual(None, test_encoder.mSymbolCumulativeCount)
+        self.assertNotEqual(None, test_encoder.mSymbolCount)
         self.assertEqual(None, test_encoder.mEncodedData)
         self.assertEqual(256, test_encoder.mTotalSymbolCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
@@ -68,7 +68,7 @@ class TestAREncoder(unittest.TestCase):
 
         # Initialize byte array to a count of one for each symbol
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_encoder.mSymbolCount[i])
 
 
     def test_append_bitmax_not_reached(self):
@@ -177,49 +177,27 @@ class TestAREncoder(unittest.TestCase):
         test_encoder.mMaxEncodedDataLen = 1024
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_encoder.mSymbolCount[i])
 
-        self.assertEqual(256, test_encoder.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_encoder.mSymbolCount[255])
         self.assertEqual(256, test_encoder.mTotalSymbolCount)
 
         test_encoder._increment_count(0)
 
-        for i in range(0, 256):
-            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
-
+        self.assertEqual(2, test_encoder.mSymbolCount[0])
         self.assertEqual(257, test_encoder.mTotalSymbolCount)
 
         test_encoder._increment_count(50)
+        self.assertEqual(2, test_encoder.mSymbolCount[50])
         self.assertEqual(258, test_encoder.mTotalSymbolCount)
 
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, 256):
-            self.assertEqual(3 + i, test_encoder.mSymbolCumulativeCount[i])
-
         test_encoder._increment_count(50)
+        self.assertEqual(3, test_encoder.mSymbolCount[50])
         self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, 256):
-            self.assertEqual(4 + i, test_encoder.mSymbolCumulativeCount[i])
-
-        self.assertEqual(259, test_encoder.mSymbolCumulativeCount[255])
-
         test_encoder._increment_count(255)
+        self.assertEqual(3, test_encoder.mSymbolCount[50])
         self.assertEqual(260, test_encoder.mTotalSymbolCount)
-
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_encoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, 255):
-            self.assertEqual(4 + i, test_encoder.mSymbolCumulativeCount[i])
-
-        self.assertEqual(260, test_encoder.mSymbolCumulativeCount[255])
-
 
     def test_increment_count_pastmax(self):
         # Purpose: Increment various indexes until we surpass the max bytes
@@ -230,7 +208,7 @@ class TestAREncoder(unittest.TestCase):
         test_encoder.mMaxEncodedDataLen = 1024
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_encoder.mSymbolCount[i])
 
         for i in range(0, 100):
             test_encoder._increment_count(0)
@@ -249,13 +227,9 @@ class TestAREncoder(unittest.TestCase):
 
         # Normalization should occur now
 
-        # Ensure each entry is greater than previous one which ensure that each symbol count is at least 0
-        for i in range(1, 256):
-            self.assertGreater(test_encoder.mSymbolCumulativeCount[i], test_encoder.mSymbolCumulativeCount[i-1])
-
-        self.assertEqual(50, test_encoder.mSymbolCumulativeCount[0])
-        self.assertEqual(50, test_encoder.mSymbolCumulativeCount[200] - test_encoder.mSymbolCumulativeCount[199])
-        self.assertEqual(28, test_encoder.mSymbolCumulativeCount[255] - test_encoder.mSymbolCumulativeCount[254])
+        self.assertEqual(50, test_encoder.mSymbolCount[0])
+        self.assertEqual(50, test_encoder.mSymbolCount[200])
+        self.assertEqual(28, test_encoder.mSymbolCount[255])
 
         self.assertEqual(381, test_encoder.mTotalSymbolCount)
 
@@ -273,7 +247,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
@@ -295,7 +269,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(1, test_encoder.mCurrentBitCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
@@ -320,7 +294,7 @@ class TestAREncoder(unittest.TestCase):
 
         test_encoder.mE3ScaleCount = 2
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mE3ScaleCount)
         self.assertEqual(3, test_encoder.mCurrentBitCount)
@@ -344,7 +318,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(2, test_encoder.mCurrentBitCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
@@ -367,7 +341,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(1, test_encoder.mCurrentBitCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
@@ -392,7 +366,7 @@ class TestAREncoder(unittest.TestCase):
 
         test_encoder.mE3ScaleCount = 2
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mE3ScaleCount)
         self.assertEqual(3, test_encoder.mCurrentBitCount)
@@ -416,7 +390,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(2, test_encoder.mCurrentBitCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
@@ -439,7 +413,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mCurrentBitCount)
         self.assertEqual(1, test_encoder.mE3ScaleCount)
@@ -463,7 +437,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
-        test_encoder._rescale()
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mCurrentBitCount)
         self.assertEqual(2, test_encoder.mE3ScaleCount)
@@ -488,71 +462,71 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(0, test_encoder.mEncodedData[0])
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 1 out of total count of 256
-        test_encoder._update_range_tags(0)
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0, test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(7, test_encoder.mUpperTag)
 
-        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(2, test_encoder.mSymbolCount[0])
         self.assertEqual(257, test_encoder.mTotalSymbolCount)
         self.assertEqual(0, test_encoder.mEncodedDataCount)
 
         # _rescale
-        test_encoder._rescale();
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag);
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(2047, test_encoder.mUpperTag)
 
-        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(2, test_encoder.mSymbolCount[0])
         self.assertEqual(257, test_encoder.mTotalSymbolCount)
         self.assertEqual(1, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
         self.assertEqual(0, test_encoder.mCurrentBitCount)
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 2 out of total count of 257
-        test_encoder._update_range_tags(0)
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0, test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(14, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(3, test_encoder.mSymbolCount[0])
         self.assertEqual(258, test_encoder.mTotalSymbolCount)
 
         # _rescale
-        test_encoder._rescale();
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag);
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(1919, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
+        self.assertEqual(3, test_encoder.mSymbolCount[0])
         self.assertEqual(258, test_encoder.mTotalSymbolCount)
         self.assertEqual(1, test_encoder.mEncodedDataCount)
         self.assertEqual(0, test_encoder.mEncodedData[0])
         self.assertEqual(0, test_encoder.mEncodedData[1])
         self.assertEqual(7, test_encoder.mCurrentBitCount)
 
-        # Pass in index for symbol 0xAA which currently has cumulative count of count out of 173 total count of 258
-        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(173, test_encoder.mSymbolCumulativeCount[0xAA])
-        test_encoder._update_range_tags(0xAA)
+        # Pass in index for symbol 0xAA which currently has count of 1
+        self.assertEqual(1, test_encoder.mSymbolCount[0xA9])
+        self.assertEqual(1, test_encoder.mSymbolCount[0xAA])
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0xAA, test_encoder.mLowerTag, test_encoder.mUpperTag)
 
         self.assertEqual(1280, test_encoder.mLowerTag)
         self.assertEqual(1286, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_encoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(3, test_encoder.mSymbolCount[0])
+        self.assertEqual(1, test_encoder.mSymbolCount[0xA9])
+        self.assertEqual(2, test_encoder.mSymbolCount[0xAA])
         self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
         # _rescale
-        test_encoder._rescale();
+        [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._rescale(test_encoder.mLowerTag, test_encoder.mUpperTag);
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(1791, test_encoder.mUpperTag)
 
-        self.assertEqual(3, test_encoder.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_encoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_encoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(3, test_encoder.mSymbolCount[0])
+        self.assertEqual(1, test_encoder.mSymbolCount[0xA9])
+        self.assertEqual(2, test_encoder.mSymbolCount[0xAA])
         self.assertEqual(259, test_encoder.mTotalSymbolCount)
 
         self.assertEqual(2, test_encoder.mEncodedDataCount)
@@ -573,15 +547,15 @@ class TestAREncoder(unittest.TestCase):
 
         self.assertEqual(256, test_encoder.mTotalSymbolCount)
 
-        self.assertEqual(1, test_encoder.mSymbolCumulativeCount[0])
-        self.assertEqual(2, test_encoder.mSymbolCumulativeCount[1])
-        self.assertEqual(65, test_encoder.mSymbolCumulativeCount[64])
-        self.assertEqual(251, test_encoder.mSymbolCumulativeCount[250])
-        self.assertEqual(256, test_encoder.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_encoder.mSymbolCount[0])
+        self.assertEqual(1, test_encoder.mSymbolCount[1])
+        self.assertEqual(1, test_encoder.mSymbolCount[64])
+        self.assertEqual(1, test_encoder.mSymbolCount[250])
+        self.assertEqual(1, test_encoder.mSymbolCount[255])
 
 
         for i in range(0, 256):
-            self.assertEqual(1 + i, test_encoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_encoder.mSymbolCount[i])
 
         # Normalize changed data, All count should be halved
         for i in range(0,10):
@@ -599,11 +573,11 @@ class TestAREncoder(unittest.TestCase):
 
         self.assertEqual(268, test_encoder.mTotalSymbolCount)
 
-        self.assertEqual(5, test_encoder.mSymbolCumulativeCount[0])
-        self.assertEqual(6, test_encoder.mSymbolCumulativeCount[1])
-        self.assertEqual(69, test_encoder.mSymbolCumulativeCount[64])
-        self.assertEqual(259, test_encoder.mSymbolCumulativeCount[250])
-        self.assertEqual(268, test_encoder.mSymbolCumulativeCount[255])
+        self.assertEqual(5, test_encoder.mSymbolCount[0])
+        self.assertEqual(1, test_encoder.mSymbolCount[1])
+        self.assertEqual(1, test_encoder.mSymbolCount[64])
+        self.assertEqual(5, test_encoder.mSymbolCount[250])
+        self.assertEqual(5, test_encoder.mSymbolCount[255])
 
 
     def test_encode_data_data_len_invalid(self):

@@ -13,9 +13,7 @@ The de-compressor will go through five stages in order to de-compress the data.
 The stages are as follows:
     1. Decode data from binary into an array integer of symbols
     2. Expand symbols that indicate general runs into full symbol runs
-    3. Expand symbols that indicate runs of special symbol #2
-    4. Reverse the Burows-Wheeler transform
-    5. Expand symbols that indicate runs of special symbol #1
+    3. Reverse the Burows-Wheeler transform
 """
 
 from array import *
@@ -27,15 +25,11 @@ class Dekompressor:
     TERMINATION_SYMBOL = 256 # Used to indicate end of compression sequence
     INVALID_SYMBOL = 0xFFFF
 
-    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_, decoderWordSize_ = 32):
+    def __init__(self, sectionSize_, genericMaxRun_, decoderWordSize_ = 16):
         """
         Constructor
 
         :param sectionSize_: Data section size to use to break up data when compressing
-        :param specialSymbol1_: Special symbol whose runs will be removed before the BW transform
-        :param specialSymbol1MaxRun_: The max run of special symbol 1
-        :param specialSymbol2_: Special symbol whose runs will be removed after the BW transform
-        :param specialSymbol2MaxRun_: The max run of special symbol 2
         :param genericMaxRun_: The max run of generic symbols
         :param decoderWordSize_: The size of words (in bits) to use for decoding data
         :return:
@@ -45,17 +39,15 @@ class Dekompressor:
         if(sectionSize_ < 1):
             raise Exception('Section size must be greater than 0')
 
-        self.mSectionSize = sectionSize_
-        self.mSpecialSymbol1 = specialSymbol1_
-        self.mSpecialSymbol1MaxRun = specialSymbol1MaxRun_
-        self.mSpecialSymbol1RunLengthStart = self.BASE_BINARY_VOCABULARY_SIZE
-        self.mSpecialSymbol2 = specialSymbol2_
-        self.mSpecialSymbol2MaxRun = specialSymbol2MaxRun_
-        self.mSpecialSymbol2RunLengthStart = self.mSpecialSymbol1RunLengthStart + self.mSpecialSymbol1MaxRun
-        self.mGenericMaxRun = genericMaxRun_
-        self.mGenericRunLengthStart = self.mSpecialSymbol2RunLengthStart + self.mSpecialSymbol2MaxRun
+        # Ensure that generic max run is at least one
+        if(genericMaxRun_ < 1):
+            genericMaxRun_ = 1
 
-        self.mVocabularySize = self.BASE_BINARY_VOCABULARY_SIZE + specialSymbol1MaxRun_ + specialSymbol2MaxRun_ + genericMaxRun_
+        self.mSectionSize = sectionSize_
+        self.mGenericMaxRun = genericMaxRun_
+        self.mGenericRunLengthStart = self.BASE_BINARY_VOCABULARY_SIZE
+
+        self.mVocabularySize = self.BASE_BINARY_VOCABULARY_SIZE + genericMaxRun_
         self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
         self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
@@ -217,62 +209,33 @@ class Dekompressor:
         for i in range(0, self.mBWTransformStoreBytes):
             originalIndex |= ((incomingData_[i] & 0xFF) << (i*8))
 
-        sortedData = array('i', sorted(incomingData_[self.mBWTransformStoreBytes:incomingDataSize_]))
+        precedingCharacterCount = array('i', [0]*self.mVocabularySize)
+        previousSymbolCountBeforeIndex = array('i', [0]*self.mSectionSize)
 
-        currentSymbol = 0xFFFF
-        currentIndex = originalIndex
+        startingIndex = self.mBWTransformStoreBytes
+        dataSize = incomingDataSize_ - self.mBWTransformStoreBytes
 
-        # Set the number of required symbols to exclude the transform data
-        numSymbolsToRevert = incomingDataSize_ - self.mBWTransformStoreBytes
-        currentSymbol = sortedData[currentIndex]
-        restoredData_[restoredDataIndex] = currentSymbol
-        restoredDataIndex += 1
-        numSymbolsToRevert -= 1
+        # Generate preceding symbol count values
+        for i in range(0, dataSize):
+            symbol = incomingData_[startingIndex+i]
+            previousSymbolCountBeforeIndex[i] = precedingCharacterCount[symbol]
+            precedingCharacterCount[symbol] += 1
 
-        originalDataListToSearch = incomingData_[self.mBWTransformStoreBytes:].tolist()
+        sum = 0
 
-        # Go through all the data
-        while(numSymbolsToRevert > 0):
+        # Generate counts of total number of symbols that come before the current symbol (indicated by index) lexographically
+        for i in range(0, self.mVocabularySize):
+            sum += precedingCharacterCount[i]
+            precedingCharacterCount[i] = sum - precedingCharacterCount[i]
 
-            symbolCount = 1
+        index = originalIndex
 
-            symbolCount += sortedData[0:currentIndex].count(currentSymbol)
+        # Generate required amount of symbols
+        for i in range(dataSize - 1, -1, -1):
+            symbol = incomingData_[startingIndex+index]
+            restoredData_[i] = symbol
 
-            ## Go through the sorted data and determine how many copies of the symbol appear beforehand
-            #for i in range(0,currentIndex):
-            #    # If it's the same symbol increment count
-            #    if(sortedData[i] == currentSymbol):
-            #        symbolCount += 1
-
-            # Find the corresponding symbol in the transformed string, must be the at the same count as the symbol in the sorted array. Skip the indices with transform info which is not part of the original data
-
-            currentIndex = 0
-
-            # Go through the original sequence and find the matching symbol index which will be our next index in the sorted array
-            while((currentIndex >= 0) and (currentIndex < len(originalDataListToSearch)) and (symbolCount > 0)):
-
-                # If the current symbol has been found decrease the symbol count
-                currentIndex = originalDataListToSearch.index(currentSymbol, currentIndex)
-
-                if(originalDataListToSearch[currentIndex] == currentSymbol):
-                    symbolCount -= 1
-
-                # If have not reached the symbol we want increment the index
-                if(symbolCount != 0):
-                    currentIndex += 1
-
-            # We should always find the the symbols we are looking for
-            if((currentIndex < 0) or (currentIndex >= incomingDataSize_) or (symbolCount < 0)):
-                raise Exception('Corrupted data')
-
-            # Need to adjust as the transformed data contains extra transform info
-            #currentIndex -= self.mBWTransformStoreBytes
-
-            # Get the current symbol and store it
-            currentSymbol = sortedData[currentIndex]
-            restoredData_[restoredDataIndex] = currentSymbol
-            restoredDataIndex += 1
-            numSymbolsToRevert -= 1
+            index = previousSymbolCountBeforeIndex[index] + precedingCharacterCount[symbol];
 
         return (incomingDataSize_ - self.mBWTransformStoreBytes)
 
@@ -293,8 +256,6 @@ class Dekompressor:
 
         decodedDataLen_ = 0
         lengthAfterGenericExpansion = 0
-        lengthAfterSymbol1Expansion = 0
-        lengthAfterSymbol2Expansion = 0
 
         # Decode the data first
         decodedDataLen_ = self.mDecoder.decode(compressedData_, compressedDataLen_,self.mWorkingArray1, self.mWorkingArrayMaxSize)
@@ -302,46 +263,26 @@ class Dekompressor:
         # Perform generic symbol run expansion
         lengthAfterGenericExpansion = self._expandRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mWorkingArray1, decodedDataLen_, self.mWorkingArray2, self.mWorkingArrayMaxSize)
 
-        reverseTransformInputData = self.mWorkingArray2
-        reverseTransformOutputData = self.mWorkingArray1
-        lengthAfterSymbol2Expansion = lengthAfterGenericExpansion
-
-        # Perform second character replacement if possible
-        if(self.mSpecialSymbol2MaxRun > 1):
-            lengthAfterSymbol2Expansion = self._expandRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mWorkingArray2, lengthAfterGenericExpansion, self.mWorkingArray1, self.mWorkingArrayMaxSize)
-            reverseTransformInputData = self.mWorkingArray1
-            reverseTransformOutputData = self.mWorkingArray2
-
         # Reverse the BW transform
-        lengthAfterBWReverse = self._reverseBWTransform(reverseTransformInputData, lengthAfterSymbol2Expansion, reverseTransformOutputData, self.mWorkingArrayMaxSize)
-
-        finalOutputData = reverseTransformOutputData
-        lengthAfterSymbol1Expansion = lengthAfterBWReverse
-
-        # Perform first character expansion if possible
-        if(self.mSpecialSymbol1MaxRun > 1):
-            expandSymbol1InputData = reverseTransformOutputData
-            expandSymbol1OutputData = reverseTransformInputData
-            finalOutputData = expandSymbol1OutputData
-            lengthAfterSymbol1Expansion = self._expandRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, expandSymbol1InputData, lengthAfterBWReverse, expandSymbol1OutputData, self.mWorkingArrayMaxSize)
+        lengthAfterBWReverse = self._reverseBWTransform(self.mWorkingArray2, lengthAfterGenericExpansion, self.mWorkingArray1, self.mWorkingArrayMaxSize)
 
         # If data exceeds section size throw exception
-        if(lengthAfterSymbol1Expansion > self.mSectionSize):
+        if(lengthAfterBWReverse  > self.mSectionSize):
             raise Exception('Data length exceeds max section size')
 
         # Ensure we have enough room to store all data
-        if(lengthAfterSymbol1Expansion > maxOutputDataLen_):
+        if(lengthAfterBWReverse  > maxOutputDataLen_):
             raise Exception('Not enough space to store uncompressed data')
 
         # Copy the data to the byte array, all data should be between 0-255
-        for i in range(0, lengthAfterSymbol1Expansion):
+        for i in range(0, lengthAfterBWReverse):
 
-            if(finalOutputData[i] > 255):
+            if(self.mWorkingArray1[i] > 255):
                 raise Exception('Invalid symbol, not in byte range')
 
-            outputData_[i] = finalOutputData[i]
+            outputData_[i] = self.mWorkingArray1[i]
 
-        return lengthAfterSymbol1Expansion
+        return lengthAfterBWReverse
 
     def reset(self):
         """

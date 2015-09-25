@@ -10,14 +10,10 @@ this implementation.
 The compressor will go through five stages in order to compress the data.
 
 The stages are as follows:
-    1. If defined, replaces runs (2 - defined) of special symbol #1 by extended symbols. Extended symbols will be added
-       to support replacing runs of data.
-    2. The Burrows-Wheeler transform will be performed on the data. This stage will maximize the runs of symbols
-    3. If defined, replaces runs (2 - defined) of special symbol #2 by extended symbols. Extended symbols will be added
-       to support replacing runs of data.
-    4. Replace runs of symbols with initial symbol and extra symbol indicating length of run. Extended symbols will be
-       added to support this. This stage will replace runs of all symbols.
-    5. Encoded data into binary using an encoder
+    1. The Burrows-Wheeler transform will be performed on the data. This stage will maximize the runs of symbols
+    2. Replace runs of symbols with initial symbol and extra symbol indicating length of run. Extended symbols will be
+       added to support this.
+    3. Encoded data into binary using an encoder
 """
 
 from array import *
@@ -67,15 +63,11 @@ class Kompressor:
     TERMINATION_SYMBOL = 256 # Used to indicate end of compression sequence
     INVALID_SYMBOL = 0xFFFF
 
-    def __init__(self, sectionSize_, specialSymbol1_, specialSymbol1MaxRun_, specialSymbol2_, specialSymbol2MaxRun_, genericMaxRun_, encoderWordSize_ = 32):
+    def __init__(self, sectionSize_, genericMaxRun_, encoderWordSize_ = 16):
         """
         Constructor
 
         :param sectionSize_: Data section size to use to break up data when compressing
-        :param specialSymbol1_: Special symbol whose runs will be removed before the BW transform
-        :param specialSymbol1MaxRun_: The max run of special symbol 1
-        :param specialSymbol2_: Special symbol whose runs will be removed after the BW transform
-        :param specialSymbol2MaxRun_: The max run of special symbol 2
         :param genericMaxRun_: The max run of generic symbols
         :param encoderWordSize_: The size of words (in bits) to use for encoding data
         :return:
@@ -85,17 +77,15 @@ class Kompressor:
         if(sectionSize_ < 1):
             raise Exception('Section size must be greater than 0')
 
-        self.mSectionSize = sectionSize_
-        self.mSpecialSymbol1 = specialSymbol1_
-        self.mSpecialSymbol1MaxRun = specialSymbol1MaxRun_
-        self.mSpecialSymbol1RunLengthStart = self.BASE_BINARY_VOCABULARY_SIZE
-        self.mSpecialSymbol2 = specialSymbol2_
-        self.mSpecialSymbol2MaxRun = specialSymbol2MaxRun_
-        self.mSpecialSymbol2RunLengthStart = self.mSpecialSymbol1RunLengthStart + self.mSpecialSymbol1MaxRun
-        self.mGenericMaxRun = genericMaxRun_
-        self.mGenericRunLengthStart = self.mSpecialSymbol2RunLengthStart + self.mSpecialSymbol2MaxRun
+        # Ensure that generic max run is at least one
+        if(genericMaxRun_ < 1):
+            genericMaxRun_ = 1
 
-        self.mVocabularySize = self.BASE_BINARY_VOCABULARY_SIZE + specialSymbol1MaxRun_ + specialSymbol2MaxRun_ + genericMaxRun_
+        self.mSectionSize = sectionSize_
+        self.mGenericMaxRun = genericMaxRun_
+        self.mGenericRunLengthStart = self.BASE_BINARY_VOCABULARY_SIZE
+
+        self.mVocabularySize = self.BASE_BINARY_VOCABULARY_SIZE + genericMaxRun_
         self.mBWTransformStoreBytes = utils.getMinBytesToRepresent(sectionSize_)
         self.mSectionTransformDataMaxSize = sectionSize_ + self.mBWTransformStoreBytes
         self.mSectionTransformData = array('i', [0]*(self.mSectionTransformDataMaxSize))
@@ -104,64 +94,6 @@ class Kompressor:
         self.mContinuousModeEnabled = False
         self.mContinuousModeTotalData = 0
         self.mContinuousModeDataCompressed = 0
-
-    def _replaceRunsSpecific(self, symbolToReplace_, runLengthSymbolStart_, maxRunLength_, dataSection_, dataSize_):
-        """
-        Remove runs of symbol passed in using extended symbols that start at runLengthSymbolStart_. The data will be
-        stored in place in dataSection_ array provided array. The new length of dataSection will be returned
-
-        :param symbolToReplace_: The symbol whose runs we are replacing
-        :param runLengthSymbolStart_: The start symbol of symbols used to replace runs of data. First symbol indicates run of two
-        :param maxRunLength_: The maximum run length we will be replacing
-        :param dataSection_: The data section on which we are working. This is an array
-        :param dataSize_: The size of the array
-        :return: The new size of the dataSection_ array after replacement is finished
-        """
-        runCount = 0
-        outDataIndex = 0
-
-        # Go through all the data
-        for i in range(0, dataSize_):
-
-            # If the next symbol encountered is the symbol we are replacing just increment the run count, otherwise process change
-            if(symbolToReplace_ == dataSection_[i]):
-                runCount += 1
-            else:
-                # If the run is greater than the max put in max symbol
-                while(runCount > maxRunLength_):
-                    dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 2
-                    runCount -= maxRunLength_
-                    outDataIndex += 1
-
-                # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of two. If it is a run of 1 then put the symbol back in
-                if(runCount >= 2):
-                    dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 2)
-                    outDataIndex += 1
-                elif(runCount == 1):
-                    dataSection_[outDataIndex] = symbolToReplace_
-                    outDataIndex += 1
-
-                runCount = 0
-
-                # Insert the symbol that was just encountered
-                dataSection_[outDataIndex] = dataSection_[i]
-                outDataIndex += 1
-
-        # If there is a run collected at the end, replace with appropriate symbol(s).
-        while(runCount > maxRunLength_):
-            dataSection_[outDataIndex] = runLengthSymbolStart_ + maxRunLength_ - 2
-            runCount -= maxRunLength_
-            outDataIndex += 1
-
-        # If the run is greater that or equal to 2, insert the replacement symbol. The first symbol indicates a run of two. If it is a run of 1 then put the symbol back in
-        if(runCount >= 2):
-            dataSection_[outDataIndex] = (runLengthSymbolStart_ + runCount - 2)
-            outDataIndex += 1
-        elif(runCount == 1):
-            dataSection_[outDataIndex] = symbolToReplace_
-            outDataIndex += 1
-
-        return outDataIndex
 
     def _replaceRunsGeneric(self, runLengthSymbolStart_, maxRunLength_, dataSection_, dataSize_):
         """
@@ -307,22 +239,11 @@ class Kompressor:
         if(inputDataLen_ > self.mSectionSize):
             raise Exception('Data length exceeds max section size')
 
-        lengthAfterSymbol1Replacement = inputDataLen_
-
-        # Perform first character replacement if possible
-        if(self.mSpecialSymbol1MaxRun > 1):
-            lengthAfterSymbol1Replacement = self._replaceRunsSpecific(self.mSpecialSymbol1, self.mSpecialSymbol1RunLengthStart, self.mSpecialSymbol1MaxRun, inputData_, inputDataLen_)
-
         # Transform data using BW transform
-        lengthAfterBWTransform = self._performBWTransform(inputData_, lengthAfterSymbol1Replacement, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
-
-        lengthAfterSymbol2Replacement = lengthAfterBWTransform
-        # Perform second character replacement if possible
-        if(self.mSpecialSymbol2MaxRun > 1):
-            lengthAfterSymbol2Replacement = self._replaceRunsSpecific(self.mSpecialSymbol2, self.mSpecialSymbol2RunLengthStart, self.mSpecialSymbol2MaxRun, self.mSectionTransformData, lengthAfterBWTransform)
+        lengthAfterBWTransform = self._performBWTransform(inputData_, inputDataLen_, self.mSectionTransformData, self.mSectionTransformDataMaxSize)
 
         # Perform generic symbol run replacement
-        lengthAfterGenericReplacement = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, lengthAfterSymbol2Replacement)
+        lengthAfterGenericReplacement = self._replaceRunsGeneric(self.mGenericRunLengthStart, self.mGenericMaxRun, self.mSectionTransformData, lengthAfterBWTransform)
 
         # Encode the data
         self.mSectionTransformData[lengthAfterGenericReplacement] = self.TERMINATION_SYMBOL
@@ -337,31 +258,3 @@ class Kompressor:
         :return:
         """
         self.mEncoder.reset()
-
-    def kompressStartContinuous(self, totalDataToCompress_):
-        """
-        Enable continuous compression mode. The totalDataToCompress_ size will determine how long this mode will run
-        without resetting the encoder
-
-        :param totalDataToCompress_: The duration of the continuous mode
-        :return:
-        """
-        pass
-
-    def kompressStopContinuous(self):
-        """
-        Stops the continuous compressions mode if its currently running.
-
-        :return:
-        """
-
-    def kompressFeedContinuous(self, inputData_, inputDataLen_, outputData_, outputDataOffset_, maxOutputLen_):
-        """
-
-        :param inputData_:
-        :param inputDataLen_:
-        :param outputData_:
-        :param outputDataOffset_:
-        :param maxOutputLen_:
-        :return: True if continuous mode is still running. If we have satisfied the total data requirement, stop continuous mode and return False
-        """

@@ -27,7 +27,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0x07FF, test_ardecoder.mWordBitMask)
         self.assertEqual(0x0400, test_ardecoder.mWordMSBMask)
         self.assertEqual(0x0200, test_ardecoder.mWordSecondMSBMask)
-        self.assertNotEqual(None, test_ardecoder.mSymbolCumulativeCount)
+        self.assertNotEqual(None, test_ardecoder.mSymbolCount)
         self.assertEqual(None, test_ardecoder.mEncodedData)
         self.assertEqual(0, test_ardecoder.mEncodedDataCount)
         self.assertEqual(None, test_ardecoder.mDecodedData)
@@ -63,7 +63,7 @@ class TestARDecoder(unittest.TestCase):
 
         # Initialize byte array to a count of one for each symbol
         for i in range(0, test_ardecoder.mVocabularySize):
-            test_ardecoder.mSymbolCumulativeCount[i] = 4
+            test_ardecoder.mSymbolCount[i] = 4
 
         test_ardecoder.reset();
 
@@ -72,7 +72,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0x07FF, test_ardecoder.mWordBitMask)
         self.assertEqual(0x0400, test_ardecoder.mWordMSBMask)
         self.assertEqual(0x0200, test_ardecoder.mWordSecondMSBMask)
-        self.assertNotEqual(None, test_ardecoder.mSymbolCumulativeCount)
+        self.assertNotEqual(None, test_ardecoder.mSymbolCount)
         self.assertEqual(None, test_ardecoder.mEncodedData)
         self.assertEqual(0, test_ardecoder.mEncodedDataCount)
         self.assertEqual(None, test_ardecoder.mDecodedData)
@@ -88,7 +88,7 @@ class TestARDecoder(unittest.TestCase):
 
         # Ensure that the cumulative count is initialized properly
         for i in range(0, test_ardecoder.mVocabularySize):
-            self.assertEqual(i+1, test_ardecoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_ardecoder.mSymbolCount[i])
 
     def test_get_next_bit_exceedmax(self):
         # Purpose: Attempt to get the next bit when we have gone through all the encoded data
@@ -183,48 +183,26 @@ class TestARDecoder(unittest.TestCase):
         test_ardecoder = ARDecoder(11, 256, 256)
 
         for i in range(0, test_ardecoder.mVocabularySize):
-            self.assertEqual(1 + i, test_ardecoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_ardecoder.mSymbolCount[i])
 
-        self.assertEqual(256, test_ardecoder.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[255])
         self.assertEqual(256, test_ardecoder.mTotalSymbolCount)
 
         test_ardecoder._increment_count(0)
-
-        for i in range(0, test_ardecoder.mVocabularySize):
-            self.assertEqual(2 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
         self.assertEqual(257, test_ardecoder.mTotalSymbolCount)
 
         test_ardecoder._increment_count(50)
         self.assertEqual(258, test_ardecoder.mTotalSymbolCount)
 
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, test_ardecoder.mVocabularySize):
-            self.assertEqual(3 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
         test_ardecoder._increment_count(50)
         self.assertEqual(259, test_ardecoder.mTotalSymbolCount)
 
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, test_ardecoder.mVocabularySize):
-            self.assertEqual(4 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
-        self.assertEqual(259, test_ardecoder.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[255])
 
         test_ardecoder._increment_count(255)
         self.assertEqual(260, test_ardecoder.mTotalSymbolCount)
 
-        for i in range(0, 50):
-            self.assertEqual(2 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
-        for i in range(50, 255):
-            self.assertEqual(4 + i, test_ardecoder.mSymbolCumulativeCount[i])
-
-        self.assertEqual(260, test_ardecoder.mSymbolCumulativeCount[255])
+        self.assertEqual(2, test_ardecoder.mSymbolCount[255])
 
     def test_increment_count_pastmax(self):
         # Purpose: Increment various indexes until we surpass the max bytes
@@ -233,7 +211,7 @@ class TestARDecoder(unittest.TestCase):
         test_ardecoder = ARDecoder(11, 256, 256)
 
         for i in range(0, test_ardecoder.mVocabularySize):
-            self.assertEqual(1 + i, test_ardecoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_ardecoder.mSymbolCount[i])
 
         for i in range(0, 100):
             test_ardecoder._increment_count(0)
@@ -251,14 +229,9 @@ class TestARDecoder(unittest.TestCase):
         test_ardecoder._increment_count(255)
 
         # Normalization should occur now
-
-        # Ensure each entry is greater than previous one which ensure that each symbol count is at least 0
-        for i in range(1, test_ardecoder.mVocabularySize):
-            self.assertGreater(test_ardecoder.mSymbolCumulativeCount[i], test_ardecoder.mSymbolCumulativeCount[i-1])
-
-        self.assertEqual(50, test_ardecoder.mSymbolCumulativeCount[0])
-        self.assertEqual(50, test_ardecoder.mSymbolCumulativeCount[200] - test_ardecoder.mSymbolCumulativeCount[199])
-        self.assertEqual(28, test_ardecoder.mSymbolCumulativeCount[255] - test_ardecoder.mSymbolCumulativeCount[254])
+        self.assertEqual(50, test_ardecoder.mSymbolCount[0])
+        self.assertEqual(50, test_ardecoder.mSymbolCount[200])
+        self.assertEqual(28, test_ardecoder.mSymbolCount[255])
 
         self.assertEqual(381, test_ardecoder.mTotalSymbolCount)
 
@@ -273,15 +246,15 @@ class TestARDecoder(unittest.TestCase):
 
         self.assertEqual(256, test_ardecoder.mTotalSymbolCount)
 
-        self.assertEqual(1, test_ardecoder.mSymbolCumulativeCount[0])
-        self.assertEqual(2, test_ardecoder.mSymbolCumulativeCount[1])
-        self.assertEqual(65, test_ardecoder.mSymbolCumulativeCount[64])
-        self.assertEqual(251, test_ardecoder.mSymbolCumulativeCount[250])
-        self.assertEqual(256, test_ardecoder.mSymbolCumulativeCount[255])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[0])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[1])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[64])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[250])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[255])
 
 
         for i in range(0, test_ardecoder.mVocabularySize):
-            self.assertEqual(1 + i, test_ardecoder.mSymbolCumulativeCount[i])
+            self.assertEqual(1, test_ardecoder.mSymbolCount[i])
 
         # Normalize changed data, All count should be halved
         for i in range(0,10):
@@ -299,11 +272,11 @@ class TestARDecoder(unittest.TestCase):
 
         self.assertEqual(268, test_ardecoder.mTotalSymbolCount)
 
-        self.assertEqual(5, test_ardecoder.mSymbolCumulativeCount[0])
-        self.assertEqual(6, test_ardecoder.mSymbolCumulativeCount[1])
-        self.assertEqual(69, test_ardecoder.mSymbolCumulativeCount[64])
-        self.assertEqual(259, test_ardecoder.mSymbolCumulativeCount[250])
-        self.assertEqual(268, test_ardecoder.mSymbolCumulativeCount[255])
+        self.assertEqual(5, test_ardecoder.mSymbolCount[0])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[1])
+        self.assertEqual(1, test_ardecoder.mSymbolCount[64])
+        self.assertEqual(5, test_ardecoder.mSymbolCount[250])
+        self.assertEqual(5, test_ardecoder.mSymbolCount[255])
 
     def test_rescale_none_required(self):
         # Purpose: Call when the lower and upper tag are in a range that requires no rescaling
@@ -539,7 +512,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0, test_ardecoder.mLowerTag)
         self.assertEqual(7, test_ardecoder.mUpperTag)
 
-        self.assertEqual(2, test_ardecoder.mSymbolCumulativeCount[0])
+        self.assertEqual(2, test_ardecoder.mSymbolCount[0])
         self.assertEqual(257, test_ardecoder.mTotalSymbolCount)
         self.assertEqual(0, test_ardecoder.mEncodedDataCount)
 
@@ -549,7 +522,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0, test_ardecoder.mLowerTag)
         self.assertEqual(2047, test_ardecoder.mUpperTag)
 
-        self.assertEqual(2, test_ardecoder.mSymbolCumulativeCount[0])
+        self.assertEqual(2, test_ardecoder.mSymbolCount[0])
         self.assertEqual(257, test_ardecoder.mTotalSymbolCount)
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 2 out of total count of 257
@@ -558,7 +531,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0, test_ardecoder.mLowerTag)
         self.assertEqual(14, test_ardecoder.mUpperTag)
 
-        self.assertEqual(3, test_ardecoder.mSymbolCumulativeCount[0])
+        self.assertEqual(3, test_ardecoder.mSymbolCount[0])
         self.assertEqual(258, test_ardecoder.mTotalSymbolCount)
 
         # _rescale
@@ -567,20 +540,20 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0, test_ardecoder.mLowerTag)
         self.assertEqual(1919, test_ardecoder.mUpperTag)
 
-        self.assertEqual(3, test_ardecoder.mSymbolCumulativeCount[0])
+        self.assertEqual(3, test_ardecoder.mSymbolCount[0])
         self.assertEqual(258, test_ardecoder.mTotalSymbolCount)
 
         # Pass in index for symbol 0xAA which currently has cumulative count of count out of 173 total count of 258
-        self.assertEqual(172, test_ardecoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(173, test_ardecoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(172, test_ardecoder.mSymbolCount[0xA9])
+        self.assertEqual(173, test_ardecoder.mSymbolCount[0xAA])
         test_ardecoder._update_range_tags(0xAA)
 
         self.assertEqual(1280, test_ardecoder.mLowerTag)
         self.assertEqual(1286, test_ardecoder.mUpperTag)
 
-        self.assertEqual(3, test_ardecoder.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_ardecoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_ardecoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(3, test_ardecoder.mSymbolCount[0])
+        self.assertEqual(172, test_ardecoder.mSymbolCount[0xA9])
+        self.assertEqual(174, test_ardecoder.mSymbolCount[0xAA])
         self.assertEqual(259, test_ardecoder.mTotalSymbolCount)
 
         # _rescale
@@ -589,9 +562,9 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(0, test_ardecoder.mLowerTag)
         self.assertEqual(1791, test_ardecoder.mUpperTag)
 
-        self.assertEqual(3, test_ardecoder.mSymbolCumulativeCount[0])
-        self.assertEqual(172, test_ardecoder.mSymbolCumulativeCount[0xA9])
-        self.assertEqual(174, test_ardecoder.mSymbolCumulativeCount[0xAA])
+        self.assertEqual(3, test_ardecoder.mSymbolCount[0])
+        self.assertEqual(172, test_ardecoder.mSymbolCount[0xA9])
+        self.assertEqual(174, test_ardecoder.mSymbolCount[0xAA])
         self.assertEqual(259, test_ardecoder.mTotalSymbolCount)
 
         self.assertEqual(2, test_ardecoder.mEncodedDataCount)
@@ -700,7 +673,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(decodedDataSize, inputDataLen-1)
 
         for i in range(0,inputDataLen-1):
-            self.assertEqual(data[i], decodedData[i])
+            self.assertEqual(data[i], decodedData2[i])
 
         encodedDataSize = test_arencoder.encode(data, inputDataLen, encodedData, 1024)
         decodedDataSize = test_ardecoder.decode(encodedData,encodedDataSize,decodedData2,1024)
@@ -708,7 +681,7 @@ class TestARDecoder(unittest.TestCase):
         self.assertEqual(decodedDataSize, inputDataLen-1)
 
         for i in range(0,inputDataLen-1):
-            self.assertEqual(data[i], decodedData[i])
+            self.assertEqual(data[i], decodedData2[i])
 
     def test_encode_decode_data_larger_set1(self):
         # Purpose: Encode a large data set
@@ -1224,8 +1197,8 @@ class TestARDecoder(unittest.TestCase):
         # Purpose: Encode a large data set using 16 bit word size
         # Expectation: The decoded data should match the original
 
-        test_arencoder = AREncoder(32, 257)
-        test_ardecoder = ARDecoder(32, 257, 256)
+        test_arencoder = AREncoder(16, 257)
+        test_ardecoder = ARDecoder(16, 257, 256)
 
         data = array('i',
                      [0x56,0xba,0x71,0xd5,0x98,0x3b,0x5f,0x2f,
@@ -1258,8 +1231,8 @@ class TestARDecoder(unittest.TestCase):
         # Purpose: Encode a large data set
         # Expectation: The decoded data should match the original
 
-        test_arencoder = AREncoder(32, 257)
-        test_ardecoder = ARDecoder(32, 257, 256)
+        test_arencoder = AREncoder(16, 257)
+        test_ardecoder = ARDecoder(16, 257, 256)
 
         data = array('i',
                      [0xfb,0xbb,0x71,0xd5,0x98,0x00,0xca,0x6c,
@@ -1289,8 +1262,8 @@ class TestARDecoder(unittest.TestCase):
         # Purpose: Encode a large data set
         # Expectation: The decoded data should match the original
 
-        test_arencoder = AREncoder(32, 257)
-        test_ardecoder = ARDecoder(32, 257, 256)
+        test_arencoder = AREncoder(16, 257)
+        test_ardecoder = ARDecoder(16, 257, 256)
 
         data = array('i',
                      [0xfb,0xbb,0x71,0xd5,0x1c,0x00,0xa6,0x0a,
@@ -1332,8 +1305,8 @@ class TestARDecoder(unittest.TestCase):
         # Purpose: Encode a large data set
         # Expectation: The decoded data should match the original
 
-        test_arencoder = AREncoder(32, 257)
-        test_ardecoder = ARDecoder(32, 257, 256)
+        test_arencoder = AREncoder(16, 257)
+        test_ardecoder = ARDecoder(16, 257, 256)
 
         data = array('i',
                      [0xfb,0xbb,0x71,0xd5,0x98,0x00,0xca,0x6c,
