@@ -463,6 +463,7 @@ class TestAREncoder(unittest.TestCase):
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 1 out of total count of 256
         [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0, test_encoder.mLowerTag, test_encoder.mUpperTag)
+        test_encoder._increment_count(0)
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(7, test_encoder.mUpperTag)
@@ -485,6 +486,7 @@ class TestAREncoder(unittest.TestCase):
 
         # Pass in index for symbol 0x00 which currently has cumulative count of 2 out of total count of 257
         [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0, test_encoder.mLowerTag, test_encoder.mUpperTag)
+        test_encoder._increment_count(0)
 
         self.assertEqual(0, test_encoder.mLowerTag)
         self.assertEqual(14, test_encoder.mUpperTag)
@@ -509,6 +511,7 @@ class TestAREncoder(unittest.TestCase):
         self.assertEqual(1, test_encoder.mSymbolCount[0xA9])
         self.assertEqual(1, test_encoder.mSymbolCount[0xAA])
         [test_encoder.mLowerTag, test_encoder.mUpperTag] = test_encoder._update_range_tags(0xAA, test_encoder.mLowerTag, test_encoder.mUpperTag)
+        test_encoder._increment_count(0xAA)
 
         self.assertEqual(1280, test_encoder.mLowerTag)
         self.assertEqual(1286, test_encoder.mUpperTag)
